@@ -35,6 +35,8 @@
 ########################################################################################################################
 
 from odoo import models, fields, api, exceptions
+# from var_dump import var_dump
+# from pprint import pprint as pp
 
 from openpyxl import load_workbook
 import base64
@@ -166,6 +168,7 @@ class DgiiReport(models.Model):
             rec.SALE_TOTAL_MONTO_CHARGED = rec.SALE_TOTAL_MONTO_FACTURADO - rec.SALE_TOTAL_MONTO_NC
 
             rec.count_final = summary_dict["final"]["count"]
+
             rec.count_fiscal = summary_dict["fiscal"]["count"]
             rec.count_gov = summary_dict["gov"]["count"]
             rec.count_special = summary_dict["special"]["count"]
@@ -187,7 +190,7 @@ class DgiiReport(models.Model):
 
     company_id = fields.Many2one('res.company', 'Company', required=False,
                                  default=lambda self: self.env.user.company_id)
-    name = fields.Char(string=u"Periodo mes/año", required=True, unique=True, index=True)
+    name = fields.Char(string=u"Período MES/AÑO", required=True, unique=True, index=True)
     positive_balance = fields.Float(u"SALDO A FAVOR ANTERIOR", required=True)
 
     it_filename = fields.Char()
@@ -300,14 +303,32 @@ class DgiiReport(models.Model):
                     (invoice_id.type, invoice_id.number, error_msg))
         return error_list
 
+
+    ''''
+        With this method they want get all invoices paid in a period of time
+        and use them in the report of the current month (start and end date given).
+        But, acording with some accountants, this should be only valid for invoices
+        with retention of ITBIS and ISR and of kind "Informal", which means that
+        don't matter if the NCF is issued by the provider or by the company requiring
+        the services, what matter is the document/identification of the provider,
+        if this is of kind of "cedula", so it is informal.
+    '''
     def get_late_informal_payed_invoice(self, start_date, end_date):
 
-        invoice_ids = self.env["account.invoice"]
+        invoice_ids = self.env["account.invoice"] # this is like define an empty array|object
+
         paid_invoice_ids = self.env["account.payment"].search(
             [('payment_date', '>=', start_date), ('payment_date', '<=', end_date), ('invoice_ids', '!=', False)])
 
         for paid_invoice_id in paid_invoice_ids:
-            invoice_ids |= paid_invoice_id.invoice_ids.filtered(lambda r: r.journal_id.purchase_type == "informal")
+            RNC_CEDULA, TIPO_IDENTIFICACION = self.get_identification_info(paid_invoice_id.partner_id.vat)
+            if TIPO_IDENTIFICACION == "2": # just informal with or without ncf given.
+                account_move_lines = self.env["account.move.line"].search([('payment_id', '=', paid_invoice_id.id)])
+                if(account_move_lines):
+                    invoice = account_move_lines[0].invoice_id
+                    FECHA_PAGO, ITBIS_RETENIDO, RETENCION_RENTA = self.get_payment_date_and_retention_data(invoice)
+                    if ITBIS_RETENIDO or RETENCION_RENTA:
+                        invoice_ids |= paid_invoice_id.invoice_ids.filtered(lambda r: r.journal_id.purchase_type in ("informal", "normal")).filtered(lambda r: r.journal_id.type == "purchase") # this is like array_push(), just making appends
 
         return invoice_ids
 
@@ -380,9 +401,8 @@ class DgiiReport(models.Model):
         FECHA_PAGO = False
         ITBIS_RETENIDO = 0
         RETENCION_RENTA = 0
-        move_id = self.env["account.move.line"].search(
-            [("move_id", "=", invoice_id.move_id.id), ('full_reconcile_id', '!=', False)])
-        if invoice_id.journal_id.purchase_type == 'informal':
+        move_id = self.env["account.move.line"].search([("move_id", "=", invoice_id.move_id.id), ('full_reconcile_id', '!=', False)])
+        if invoice_id.journal_id.purchase_type in ("informal", "normal"):
             if move_id:
                 retentions = self.env["account.move.line"].search(
                     [('invoice_id', '=', invoice_id.id), ('payment_id', '!=', False),
@@ -510,8 +530,6 @@ class DgiiReport(models.Model):
         invoice_ids = self.env["account.invoice"].search(
             [('date_invoice', '>=', start_date), ('date_invoice', '<=', end_date),
              ('journal_id', 'in', journal_ids.ids)])
-        #
-        # invoice_ids = self.env["account.invoice"].search([('number','=','A030180010100118113')])
 
         error_list = self.get_invoice_in_draft_error(invoice_ids.filtered(lambda x: x.state == "draft"))
 
@@ -548,8 +566,14 @@ class DgiiReport(models.Model):
                     invoice_id)
 
             FECHA_PAGO = ITBIS_RETENIDO = RETENCION_RENTA = False
+            
             if invoice_id.state == "paid":
                 FECHA_PAGO, ITBIS_RETENIDO, RETENCION_RENTA = self.get_payment_date_and_retention_data(invoice_id)
+                invoiceMonth = int(invoice_id.date_invoice[5:7])
+                paidMonth = int(FECHA_PAGO[5:7]) if FECHA_PAGO else False
+                periodMonth = int(month)
+                if invoiceMonth != paidMonth and invoiceMonth == periodMonth: # we this validation, we are looking don't show retentions in a period that the invoice was not paid.
+                    FECHA_PAGO = ITBIS_RETENIDO = RETENCION_RENTA = False
 
             commun_data = {
                 "RNC_CEDULA": RNC_CEDULA,
@@ -621,7 +645,10 @@ class DgiiReport(models.Model):
                      ("id", 'not in', [x.id for x in untaxed_move_lines])])
             else:
                 taxed_lines_amount = self.env["account.move.line"].search([('move_id', '=', invoice_id.move_id.id),
-                                                                           ('product_id', 'in', taxed_lines_name)])
+                                                                           ('product_id', 'in', taxed_lines_name),
+                                                                           ('tax_line_id', '=', False), #TODO, improve this filtering; with it we are looking fixing a issue in 607 report with invoice line without product selected.
+                                                                           ('name', '!=', '/') #TODO, improve this filtering; with it we are looking fixing a issue in 607 report with invoice line without product selected.
+                                                                    ])
 
             commun_data["MONTO_FACTURADO"] = self.env.user.company_id.currency_id.round(
                 sum(abs(rec.debit - rec.credit) for rec in taxed_lines_amount))
@@ -750,8 +777,7 @@ class DgiiReport(models.Model):
             self.create_sales_lines(sale_report)
 
         self.generate_txt_files()
-        from pprint import pprint as pp
-        pp(xls_dict)
+        # pp(xls_dict)
         self.generate_xls_files(xls_dict)
 
         if error_list:
@@ -761,7 +787,7 @@ class DgiiReport(models.Model):
         # fill IT-1 excel file
         cwf = os.path.join(os.path.dirname(os.path.abspath(__file__)), "IT-1-2017.xlsx")
         wb = load_workbook(cwf)
-        ws1 = wb.get_sheet_by_name("IT-1")  # Get sheet 1 in writeable copy
+        ws1 = wb["IT-1"]  # Get sheet 1 in writeable copy
         xls_dict["it1"].update({"S43": self.positive_balance})
         for k, v in xls_dict["it1"].iteritems():
             ws1[k] = v
@@ -778,7 +804,7 @@ class DgiiReport(models.Model):
         # fill IR-17 excel file
         cwf = os.path.join(os.path.dirname(os.path.abspath(__file__)), "IR-17-2015.xlsx")
         wb = load_workbook(cwf)
-        ws1 = wb.get_sheet_by_name("IR17")  # Get sheet 1 in writeable copy
+        ws1 = wb["IR17"]  # Get sheet 1 in writeable copy
         for k, v in xls_dict["ir17"].iteritems():
             ws1[k] = v
 

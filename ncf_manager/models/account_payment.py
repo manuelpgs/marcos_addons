@@ -52,7 +52,7 @@ class AccountPayment(models.Model):
         if not invoices and active_ids:
             invoices = self.env[active_model].browse(active_ids)
 
-        retention_invoices = invoices.filtered(lambda r: r.purchase_type == "informal")
+        retention_invoices = invoices.filtered(lambda r: r.purchase_type in ("informal", "normal"))
 
         if retention_invoices:
             for inv in retention_invoices:
@@ -127,7 +127,7 @@ class AccountPayment(models.Model):
 
                 line_name = "Retenciones facturas "
                 for line in reconcile_move_line:
-                    line_name += line.invoice_id.number + " / "
+                    line_name += str(line.invoice_id.number) + " / "
 
                 reconcile_invoice_move_line |= aml_obj.browse(reconcile_move_line[0].id).copy({"debit": rcredit_amount, "name": "{}".format(line_name)})
                 reconcile_invoice_move_line |= reconcile_move_line
@@ -152,7 +152,7 @@ class account_register_payments(models.TransientModel):
 
         if active_ids:
             invoices = self.env[active_model].browse(active_ids)
-            retention_invoices = invoices.filtered(lambda r: r.purchase_type == "informal")
+            retention_invoices = invoices.filtered(lambda r: r.purchase_type in ("informal", "normal"))
 
         if retention_invoices:
             for inv in retention_invoices:
