@@ -415,6 +415,8 @@ class DgiiReport(models.Model):
                             RETENCION_RENTA += retention.credit
 
                     FECHA_PAGO = retentions[0].date
+                else:
+                    FECHA_PAGO = move_id and move_id[0].date or False
             else:
                 FECHA_PAGO = move_id and move_id[0].date or False
 
@@ -566,7 +568,7 @@ class DgiiReport(models.Model):
                     invoice_id)
 
             FECHA_PAGO = ITBIS_RETENIDO = RETENCION_RENTA = False
-            
+
             if invoice_id.state == "paid":
                 FECHA_PAGO, ITBIS_RETENIDO, RETENCION_RENTA = self.get_payment_date_and_retention_data(invoice_id)
                 invoiceMonth = int(invoice_id.date_invoice[5:7])
