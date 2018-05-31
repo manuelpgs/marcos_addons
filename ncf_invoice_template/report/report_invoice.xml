@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="report_invoice_document_inherited" inherit_id="account.report_invoice_document">
+
+        <xpath expr="//div[hasclass('page')]/h2" position="replace"/>
+        <xpath expr="//div[hasclass('page')]/div[hasclass('row')]" position="replace">
+            <div class="row">
+                <div name="invoice_address" class="col-xs-5">
+                    <h3><span t-field="o.company_id.name"/></h3><br/>
+                    <strong>RNC: </strong><span t-field="o.company_id.vat"/><br/>
+                    <strong>Fecha: </strong><span t-field="o.date_invoice"/><br/>
+                    <span t-if="o.date_due and o.type == 'out_invoice' and (o.state == 'open' or o.state == 'paid')">
+                        <strong>Vence: </strong><span t-field="o.date_due"/>
+                    </span>
+                </div>
+
+                <h4 class="pull-right col-xs-5">
+                    <strong>
+                        <span t-if="o.type == 'out_invoice' and (o.state == 'open' or o.state == 'paid')">Factura de 
+                            <span t-field="o.sale_fiscal_type"/>
+                        </span>
+                        <span t-if="o.type == 'out_invoice' and o.state == 'draft'">Factura Borrador</span>
+                        <span t-if="o.type == 'out_invoice' and o.state == 'cancel'">Factura Cancelada</span>
+                        <span t-if="o.type == 'out_refund'">Nota de Crédito</span>
+                        <span t-if="o.type == 'in_refund'">NC de Proveedor</span>
+                        <span t-if="o.type == 'in_invoice'">Factura de Proveedor</span><br/>
+                    </strong>
+                    <strong>NCF: </strong><span t-field="o.number"/><br/>
+                    <span t-if="o.type == 'out_refund' and (o.origin != False)">
+                        <strong>NCF modificado: </strong><span t-field="o.origin"/>
+                        <br/>
+                    </span>
+                    <span t-if="o.type in ['out_invoice', 'out_refund'] and (o.state == 'open' or o.state == 'paid')">
+                        <strong>Válida hasta: </strong><span t-field="o.ncf_expiration_date"/>
+                    </span>
+                </h4>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[hasclass('mt32')]" position="replace">
+            <div class="row mt32 mb32">
+                <div name="invoice_partner_address" class="col-xs-5" t-if="o.partner_id.vat">
+                    <t t-if="len(o.partner_id.vat) == 9">
+                        <strong>RNC CLIENTE:</strong>
+                        <span t-field="o.partner_id.vat"/><br/>
+                        <strong>RAZÓN SOCIAL:</strong>
+                        <span t-field="o.partner_id.name"/><br/>
+                    </t>
+                    <t t-elif="len(o.partner_id.vat) == 11">
+                        <strong>CED CLIENTE:</strong>
+                        <span t-field="o.partner_id.vat"/><br/>
+                        <strong>NOMBRE:</strong>
+                        <span t-field="o.partner_id.name"/><br/>
+                    </t>
+                    <t t-else="">
+                        <strong>ID CLIENTE:</strong>
+                        <span t-field="o.partner_id.vat"/><br/>
+                        <strong>NOMBRE:</strong>
+                        <span t-field="o.partner_id.name"/><br/>
+                    </t>
+                </div>
+                <div class="col-xs-3" t-if="o.partner_id.street">
+                    <strong>DIRECCIÓN CLIENTE:</strong>
+                        <address t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address"], "no_marker": True}' />
+                </div>
+                <div class="col-xs-2" t-if="o.name">
+                    <strong>Descripción:</strong>
+                    <p t-field="o.name"/>
+                </div>
+                <div class="col-xs-2" t-if="o.origin and o.type == 'out_invoice'">
+                    <strong>Origen:</strong>
+                    <p t-field="o.origin"/>
+                </div>
+                <div name="reference" class="col-xs-2" t-if="o.reference">
+                    <strong>Referencia:</strong>
+                    <p t-field="o.reference"/>
+                </div>
+            </div>
+        </xpath>
+
+        <xpath expr="//table[1]" position="replace">
+            <t t-set="itbis" t-value="0"/>
+            <t t-set="ITBIS_EXENTO" t-value="0"/>
+            <table class="table table-condensed" name="invoice_line_table">
+                <thead>
+                    <tr>
+                        <th class="hidden">Origen</th>
+                        <th class="text-right">Cantidad</th>
+                        <th class="text-right">Precio</th>
+                        <th>Descripción</th>
+                        <th t-if="display_discount" class="text-right">Desc.</th>
+                        <th class="text-right">Impuestos</th>
+                        <th class="text-right">ITBIS</th>
+                        <th class="text-right">Valor</th>
+                    </tr>
+                </thead>
+                <tbody class="invoice_tbody">
+                    <tr t-foreach="o.invoice_line_ids" t-as="l">
+                        <t t-set="subtotal" t-value="l.price_unit * l.quantity"/>
+                        <t t-set="itbis" t-value="sum([t.amount for t in l.invoice_line_tax_ids
+                            if t.tax_group_id.name.startswith('ITBIS')])/100"/>
+                        <t t-set="ITBIS_EXENTO" t-value="any([t for t in l.invoice_line_tax_ids if t.amount == 0.0])"/>
+
+                        <td class="hidden">
+                            <span t-field="l.origin"/>
+                        </td>
+                        <td class="text-right">
+                            <span t-field="l.quantity"/>
+                        </td>
+                        <td class="text-right">
+                            <span t-field="l.price_unit"/>
+                        </td>
+                        <td>
+                            <span t-field="l.name"/>
+                        </td>
+                        <td t-if="display_discount" class="text-right">
+                            <span t-field="l.discount"/>
+                        </td>
+                        <td class="text-right">
+                            <span t-esc="', '.join(map(lambda x: (x.description or x.name), l.invoice_line_tax_ids))"/>
+                        </td>
+                        <td class="text-right">
+                            <t t-if="l.discount">
+                                <span t-esc="'{0:,.2f}'.format(itbis * (subtotal-(subtotal * l.discount)/100))"/>
+                            </t>
+                            <t t-else="">
+                                <span t-esc="'{0:,.2f}'.format(itbis * subtotal)"/>
+                            </t>
+                        </td>
+                        <td class="text-right" id="subtotal">
+                            <span t-field="l.price_subtotal"/>
+                            <t t-if="ITBIS_EXENTO">
+                                <span>
+                                    <b>E</b>
+                                </span>
+                            </t>
+                        </td>
+                    </tr>
+                    <tr t-foreach="range(max(5-len(o.invoice_line_ids),0))" t-as="l">
+                        <td t-translation="off">&amp;nbsp;</td>
+                        <td class="hidden"></td>
+                        <td></td>
+                        <td></td>
+                        <td t-if="display_discount"></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </xpath>
+
+        <xpath expr="//div/div/table/*[1]" position="after">
+            <t t-set="total_discount" t-value="0.0"/>
+            <t t-foreach="o.invoice_line_ids" t-as="l">
+                <t t-set="total_discount"
+                   t-value="total_discount + (l.price_unit * l.quantity) * (l.discount/100)"/>
+            </t>
+
+            <tr class="border-black" style="border-bottom:1px solid #dddddd;">
+                <td>
+                    Descuento
+                </td>
+                <td class="text-right">
+                    <t t-if="o.currency_id.position == 'before'">
+                        <span t-esc="o.currency_id.symbol"/>
+                        <span t-esc="'{0:,.2f}'.format(total_discount)"/>
+                    </t>
+                    <t t-else="">
+                        <span t-esc="'{0:,.2f}'.format(total_discount)"/>
+                        <span t-esc="o.currency_id.symbol"/>
+                    </t>
+                </td>
+            </tr>
+        </xpath>
+
+    </template>
+</odoo>
