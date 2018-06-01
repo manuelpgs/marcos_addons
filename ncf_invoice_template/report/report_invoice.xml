@@ -6,11 +6,11 @@
         <xpath expr="//div[hasclass('page')]/div[hasclass('row')]" position="replace">
             <div class="row">
                 <div name="invoice_address" class="col-xs-5">
-                    <h3><span t-field="o.company_id.name"/></h3><br/>
-                    <strong>RNC: </strong><span t-field="o.company_id.vat"/><br/>
-                    <strong>Fecha: </strong><span t-field="o.date_invoice"/><br/>
+                    <!-- <h3><span t-field="o.company_id.name"/></h3><br/> -->
+                    <!-- <strong>RNC: </strong><span t-field="o.company_id.vat"/><br/> -->
+                    <strong>Fecha de la factura: </strong><span t-field="o.date_invoice"/> <br />
                     <span t-if="o.date_due and o.type == 'out_invoice' and (o.state == 'open' or o.state == 'paid')">
-                        <strong>Vence: </strong><span t-field="o.date_due"/>
+                        <strong>Vencimiento del pago: </strong><span t-field="o.date_due"/>
                     </span>
                 </div>
 
@@ -41,10 +41,19 @@
             <div class="row mt32 mb32">
                 <div name="invoice_partner_address" class="col-xs-5" t-if="o.partner_id.vat">
                     <t t-if="len(o.partner_id.vat) == 9">
-                        <strong>RNC CLIENTE:</strong>
-                        <span t-field="o.partner_id.vat"/><br/>
-                        <strong>RAZÓN SOCIAL:</strong>
+                        <strong>CLIENTE:</strong>
                         <span t-field="o.partner_id.name"/><br/>
+                        <strong>RNC:</strong>
+                        <span t-field="o.partner_id.vat"/><br/>
+                        <span t-if="o.partner_id.phone">
+                            <strong>TEL.:</strong> <span t-field="o.partner_id.phone"/><br/>
+                        </span>
+                        <span t-if="o.partner_id.email">
+                            <strong>EMAIL:</strong> <span t-field="o.partner_id.email"/><br/>
+                        </span>
+                        <span t-if="o.partner_id.website">
+                            <strong>WEB:</strong> <span t-field="o.partner_id.website"/><br/>
+                        </span>
                     </t>
                     <t t-elif="len(o.partner_id.vat) == 11">
                         <strong>CED CLIENTE:</strong>
@@ -83,14 +92,14 @@
             <t t-set="ITBIS_EXENTO" t-value="0"/>
             <table class="table table-condensed" name="invoice_line_table">
                 <thead>
-                    <tr>
+                    <tr style="background-color: #3C3D3A; color: #fff; padding: auto 10px;">
                         <th class="hidden">Origen</th>
+                        <th>Descripción</th>
                         <th class="text-right">Cantidad</th>
                         <th class="text-right">Precio</th>
-                        <th>Descripción</th>
                         <th t-if="display_discount" class="text-right">Desc.</th>
                         <th class="text-right">Impuestos</th>
-                        <th class="text-right">ITBIS</th>
+                        <th class="text-right hidden">ITBIS</th>
                         <th class="text-right">Valor</th>
                     </tr>
                 </thead>
@@ -104,14 +113,14 @@
                         <td class="hidden">
                             <span t-field="l.origin"/>
                         </td>
+                        <td>
+                            <span t-field="l.name"/>
+                        </td>                        
                         <td class="text-right">
                             <span t-field="l.quantity"/>
                         </td>
                         <td class="text-right">
                             <span t-field="l.price_unit"/>
-                        </td>
-                        <td>
-                            <span t-field="l.name"/>
                         </td>
                         <td t-if="display_discount" class="text-right">
                             <span t-field="l.discount"/>
@@ -119,7 +128,7 @@
                         <td class="text-right">
                             <span t-esc="', '.join(map(lambda x: (x.description or x.name), l.invoice_line_tax_ids))"/>
                         </td>
-                        <td class="text-right">
+                        <td class="text-right hidden">
                             <t t-if="l.discount">
                                 <span t-esc="'{0:,.2f}'.format(itbis * (subtotal-(subtotal * l.discount)/100))"/>
                             </t>
@@ -173,6 +182,5 @@
                 </td>
             </tr>
         </xpath>
-
     </template>
 </odoo>
