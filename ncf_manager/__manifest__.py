@@ -1,79 +1,66 @@
 # -*- coding: utf-8 -*-
-########################################################################################################################
-#  Copyright (c) 2015 - Marcos Organizador de Negocios SRL. (<https://marcos.do/>)
-#  Write by Eneldo Serrata (eneldo@marcos.do)
-#  See LICENSE file for full copyright and licensing details.
-#
-# Odoo Proprietary License v1.0
-#
-# This software and associated files (the "Software") may only be used
-# (nobody can redistribute (or sell) your module once they have bought it, unless you gave them your consent)
-# if you have purchased a valid license
-# from the authors, typically via Odoo Apps, or if you have received a written
-# agreement from the authors of the Software (see the COPYRIGHT file).
-#
-# You may develop Odoo modules that use the Software as a library (typically
-# by depending on it, importing it and using its resources), but without copying
-# any source code or material from the Software. You may distribute those
-# modules under the license of your choice, provided that this license is
-# compatible with the terms of the Odoo Proprietary License (For example:
-# LGPL, MIT, or proprietary licenses similar to this one).
-#
-# It is forbidden to publish, distribute, sublicense, or sell copies of the Software
-# or modified copies of the Software.
-#
-# The above copyright notice and this permission notice must be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-# DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-########################################################################################################################
+# ######################################################################
+# © 2015-2018 Marcos Organizador de Negocios SRL. (https://marcos.do/)
+#             Eneldo Serrata <eneldo@marcos.do>
+# © 2017-2018 iterativo SRL. (https://iterativo.do/)
+#             Gustavo Valverde <gustavo@iterativo.do>
+
+# This file is part of NCF Manager.
+
+# NCF Manager is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# NCF Manager is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with NCF Manager.  If not, see <http://www.gnu.org/licenses/>.
+# ######################################################################
+
 {
-    'name': "Comprobantes fiscales (NCF)",
-
-    'summary': """
-        Este modulo Implementa la administracion y gestiona los números de comprobantes fiscales para el cumplimentos de las nomas de la Dirección de impuestos internos en la Republica Dominicana.
+    'name': "Gestor de Comprobantes Fiscales (NCF Manager)",
+    'version': '10.0.1.0.0',
+    'summary': u"""
+        Este módulo implementa la administración y gestión de los números de
+         comprobantes fiscales para el cumplimento de la norma 06-18 de la
+         Dirección de Impuestos Internos en la República Dominicana.
     """,
-
-    'description': """
-        Este modulo le permitira administras y configurar los diferentes númneros de comprobantes fiscales autorizados a la empresa.     
-    """,
-
-    'author': "Marcos Organizador de Negocios SRL - Write by Eneldo Serrata",
-    'website': "http://marcos.do",
-
+    'author': "Marcos Organizador de Negocios SRL, "
+              "iterativo SRL, "
+              "Odoo Dominicana (ODOM) ",
     'category': 'Localization',
-    'version': '10.0',
+
+    'external_dependencies': {
+        'python': [
+            'stdnum.do',
+        ],
+    },
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'account','account_accountant','marcos_api_tools', 'l10n_do', 'sale'],
+    'depends': ['account_accountant', 'l10n_do', 'account_cancel',
+                'base_vat', 'sale'],
 
-    # always loaded
     'data': [
-        'data/data.xml',
         'security/ir.model.access.csv',
         'security/ncf_manager_security.xml',
+        'data/sequences.xml',
         'wizard/account_invoice_cancel_view.xml',
-        'wizard/update_rate_wizard_view.xml',
         'wizard/account_invoice_refund.xml',
+        'wizard/update_sequence_wizard_view.xml',
         'views/shop_view.xml',
         'views/account_invoice_view.xml',
         'views/account_view.xml',
-        'views/views.xml',
         'views/res_currency_view.xml',
-        'views/templates.xml',
+        'views/assets_backend.xml',
+        'views/ir_sequence_view.xml',
         'views/res_view.xml',
         'views/dgii_report_view.xml',
-        'data/setup_ncf.xml'
     ],
-    'demo': [],
-    'images': 'static/description/main.png',
-    'price': 2000,
-    'currency': 'EUR',
-    'license': 'Other proprietary'
+    'qweb': [
+        'static/src/xml/ncf_manager.xml'
+    ]
 }

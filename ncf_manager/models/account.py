@@ -1,133 +1,134 @@
 # -*- coding: utf-8 -*-
-########################################################################################################################
-#  Copyright (c) 2015 - Marcos Organizador de Negocios SRL. (<https://marcos.do/>)
-#  Write by Eneldo Serrata (eneldo@marcos.do)
-#  See LICENSE file for full copyright and licensing details.
-#
-# Odoo Proprietary License v1.0
-#
-# This software and associated files (the "Software") may only be used
-# (nobody can redistribute (or sell) your module once they have bought it, unless you gave them your consent)
-# if you have purchased a valid license
-# from the authors, typically via Odoo Apps, or if you have received a written
-# agreement from the authors of the Software (see the COPYRIGHT file).
-#
-# You may develop Odoo modules that use the Software as a library (typically
-# by depending on it, importing it and using its resources), but without copying
-# any source code or material from the Software. You may distribute those
-# modules under the license of your choice, provided that this license is
-# compatible with the terms of the Odoo Proprietary License (For example:
-# LGPL, MIT, or proprietary licenses similar to this one).
-#
-# It is forbidden to publish, distribute, sublicense, or sell copies of the Software
-# or modified copies of the Software.
-#
-# The above copyright notice and this permission notice must be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-# DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-########################################################################################################################
+# ######################################################################
+# © 2015-2018 Marcos Organizador de Negocios SRL. (https://marcos.do/)
+#             Eneldo Serrata <eneldo@marcos.do>
+# © 2017-2018 iterativo SRL. (https://iterativo.do/)
+#             Gustavo Valverde <gustavo@iterativo.do>
+
+# This file is part of NCF Manager.
+
+# NCF Manager is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# NCF Manager is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with NCF Manager.  If not, see <http://www.gnu.org/licenses/>.
+# ######################################################################
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
 
 
 class AccountJournal(models.Model):
     _inherit = "account.journal"
 
-    purchase_type = fields.Selection([("normal", u"REQUIERE NCF"),
-                                      ("minor", u"GASTO MENOR NCF GENERADO POR EL SISTEMA"),
-                                      ("informal", u"PROVEEDORES INFORMALES NCF GENERADO POR EL SISTEMA"),
-                                      ("exterior", u"PAGOS AL EXTERIOR NO REQUIRE NCF"),
-                                      ("import", u"IMPORTACIONES NO REQUIRE NCF"),
-                                      ("others", u"OTROS NO REQUIRE NCF")],
-                                     string=u"Tipo de compra", default="normal")
-    ncf_control = fields.Boolean("Control de NCF")
-    ncf_remote_validation = fields.Boolean(u"Validar NCF con DGII", default=True)
-    caja_chica = fields.Boolean("Diario para caja chica")
-    partner_id = fields.Many2one("res.partner", string="Beneficiario para el pasivo de reposición")
+    @api.depends("ncf_control")
+    @api.one
+    def check_ncf_ready(self):
+        self.ncf_ready = len(self.date_range_ids) > 1
 
+    purchase_type = fields.Selection(
+        [("normal", "Compras Fiscales"),
+         ("minor", "Gastos Menores"),
+         ("informal", "Registro de Proveedores Informales"),
+         ("exterior", "Compras al Exterior"),
+         ("import", "Importaciones"),
+         ("others", "No deducibles. No requiere NCF")],
+        string="Tipo de Compra", default="others")
 
-class AccountMove(models.Model):
-    _inherit = 'account.move'
+    payment_form = fields.Selection(
+        [("cash", "Efectivo"),
+         ("bank", u"Cheque / Transferencia / Depósito"),
+         ("card", u"Tarjeta Crédito / Débito"),
+         ("credit", u"A Crédito"),
+         ("swap", "Permuta"),
+         ("bond", "Bonos o Certificados de Regalo"),
+         ("others", "Otras Formas de Venta")],
+        string="Forma de Pago", oldname="ipf_payment_type")
+
+    ncf_remote_validation = fields.Boolean("Validar con DGII", default=False)
+
+    ncf_control = fields.Boolean(related="sequence_id.ncf_control")
+    prefix = fields.Char(related="sequence_id.prefix")
+    date_range_ids = fields.One2many(related="sequence_id.date_range_ids")
+    ncf_ready = fields.Boolean(compute=check_ncf_ready)
+    special_fiscal_position_id = fields.Many2one("account.fiscal.position", string=u"Posición fiscal para regímenes especiales.",
+                                                 help=u"Define la posición fiscal por defecto para los clientes que tienen definido el tipo de comprobante fiscal regímenes especiales.")
+
+    @api.onchange("type")
+    def onchange_type(self):
+        if self.type != 'sale':
+            self.ncf_control = False
 
     @api.multi
-    def post(self):
-        invoice = self._context.get('invoice', False)
-        self._post_validate()
+    def create_ncf_sequence(self):
+        if self.ncf_control and len(self.sequence_id.date_range_ids) <= 1:
+            # this method read Selection values from res.partner sale_fiscal_type fields
+            selection = self.env["ir.sequence.date_range"].get_sale_fiscal_type_from_partner()
+            for sale_fiscal_type in selection:
+                self.sequence_id.date_range_ids[0].copy({'sale_fiscal_type': sale_fiscal_type[0]})
 
-        if invoice and invoice.type in ['out_invoice', 'out_refund'] and invoice.journal_id.ncf_control:
-            if not invoice.sale_fiscal_type:
-                raise ValidationError(u"Debe especificar el tipo de comprobante para la venta.")
-
-            if not invoice.move_name:
-                if invoice.is_nd:
-                    sequence = invoice.shop_id.nd_sequence_id
-                    active_sequence = invoice.shop_id.nd_active
-                    sequence_type = u"Nota de débito"
-                elif invoice.type == "out_refund":
-                    sequence = invoice.shop_id.nc_sequence_id
-                    active_sequence = invoice.shop_id.nc_active
-                    sequence_type = u"Nota de crédito"
-                elif invoice.sale_fiscal_type == "final":
-                    sequence = invoice.shop_id.final_sequence_id
-                    active_sequence = invoice.shop_id.final_active
-                    sequence_type = u"Cosumidor final"
-                elif invoice.sale_fiscal_type == "fiscal":
-                    sequence = invoice.shop_id.fiscal_sequence_id
-                    active_sequence = invoice.shop_id.fiscal_active
-                    sequence_type = u"crédito fiscal"
-                elif invoice.sale_fiscal_type == "gov":
-                    sequence = invoice.shop_id.gov_sequence_id
-                    active_sequence = invoice.shop_id.gov_active
-                    sequence_type = u"Gubernamental"
-                elif invoice.sale_fiscal_type == "special":
-                    sequence = invoice.shop_id.special_sequence_id
-                    active_sequence = invoice.shop_id.special_active
-                    sequence_type = u"Regimenes especiales"
-                elif invoice.sale_fiscal_type == "unico":
-                    sequence = invoice.shop_id.special_sequence_id
-                    active_sequence = invoice.shop_id.special_active
-                    sequence_type = u"Unico ingreso"
-
-                if not active_sequence:
-                    raise ValidationError(u"Este tipo de NCF para {} no esta activado.".format(sequence_type))
-
-                invoice.shop_id.check_max(invoice.sale_fiscal_type, invoice)
-                invoice.move_name = sequence.with_context(ir_sequence_date=invoice.date_invoice).next_by_id()
-                invoice.reference = invoice.journal_id.sequence_id.with_context(ir_sequence_date=invoice.date_invoice).next_by_id()
-
-        return super(AccountMove, self).post()
+            self.sequence_id.date_range_ids.invalidate_cache()
+            self.sequence_id.write({'prefix': 'B', 'padding': 8})
 
 
 class AccountTax(models.Model):
     _inherit = 'account.tax'
 
-    purchase_tax_type = fields.Selection([('itbis', 'ITBIS Pagado'),
-                                          ('itbis_servicio', 'ITBIS Pagado en servicios'),
-                                          ('ritbis', 'ITBIS Retenido'),
-                                          ('isr', 'ISR Retenido'),
-                                          ('rext', 'REMESAS AL EXTERIOR ( Ley  253-12)'),
-                                          ("cost", u"Format parte del gasto"),
-                                          ('none', 'No deducible')],
-                                         default="itbis", string="Tipo de impuesto de compra")
-    tax_except = fields.Boolean(string="Exento de este impuesto")
-    base_it1_cels = fields.Char("Celdas de la base para el IT-1")
-    tax_it1_cels = fields.Char("Celdas del inpuesto para el IT-1")
-    base_ir17_cels = fields.Char("Celdas de la base para el IR-17")
-    tax_ir17_cels = fields.Char("Celdas del inpuesto para el IR-17")
+    purchase_tax_type = fields.Selection(
+        [('itbis', 'ITBIS Pagado'),
+         ('ritbis', 'ITBIS Retenido'),
+         ('isr', 'ISR Retenido'),
+         ('rext', 'Remesas al Exterior (Ley 253-12)'),
+         ('none', 'No Deducible')],
+        default="none", string="Tipo de Impuesto en Compra"
+    )
 
-    @api.multi
-    def compute_all(self, price_unit, currency=None, quantity=1.0, product=None, partner=None):
-        res = super(AccountTax, self).compute_all(price_unit, currency=currency, quantity=quantity, product=product, partner=partner)
-        for tax in res.get("taxes", False):
-            tax_id = self.browse(tax["id"])
-            if tax_id.tax_except:
-                tax["amount"] = 0
-        return res
+    isr_retention_type = fields.Selection(
+        [('01', 'Alquileres'),
+         ('02', 'Honorarios por Servicios'),
+         ('03', 'Otras Rentas'),
+         ('04', 'Rentas Presuntas'),
+         ('05', u'Intereses Pagados a Personas Jurídicas'),
+         ('06', u'Intereses Pagados a Personas Físicas'),
+         ('07', u'Retención por Proveedores del Estado'),
+         ('08', u'Juegos Telefónicos')],
+        string="Tipo de Retención en ISR"
+    )
+
+
+class AccountAccount(models.Model):
+    _inherit = 'account.account'
+
+    income_type = fields.Selection(
+        [('01', '01 - Ingresos por operaciones (No financieros)'),
+         ('02', '02 - Ingresos Financieros'),
+         ('03', '03 - Ingresos Extraordinarios'),
+         ('04', '04 - Ingresos por Arrendamientos'),
+         ('05', '05 - Ingresos por Venta de Activo Depreciable'),
+         ('06', '06 - Otros Ingresos')],
+        string='Tipo de Ingreso')
+
+    expense_type = fields.Selection(
+        [('01', '01 - Gastos de Personal'),
+         ('02', '02 - Gastos por Trabajo, Suministros y Servicios'),
+         ('03', '03 - Arrendamientos'),
+         ('04', '04 - Gastos de Activos Fijos'),
+         ('05', u'05 - Gastos de Representación'),
+         ('06', '06 - Otras Deducciones Admitidas'),
+         ('07', '07 - Gastos Financieros'),
+         ('08', '08 - Gastos Extraordinarios'),
+         ('09', '09 - Compras y Gastos que forman parte del Costo de Venta'),
+         ('10', '10 - Adquisiciones de Activos'),
+         ('11', '11 - Gastos de Seguros')],
+        string="Tipo de Costos y Gastos")
+
+    @api.onchange('user_type_id')
+    def onchange_user_type_id(self):
+        self.income_type = False
+        self.expense_type = False

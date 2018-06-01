@@ -1,47 +1,39 @@
 # -*- coding: utf-8 -*-
-########################################################################################################################
-#  Copyright (c) 2015 - Marcos Organizador de Negocios SRL. (<https://marcos.do/>)
-#  Write by Eneldo Serrata (eneldo@marcos.do)
-#  See LICENSE file for full copyright and licensing details.
-#
-# Odoo Proprietary License v1.0
-#
-# This software and associated files (the "Software") may only be used
-# (nobody can redistribute (or sell) your module once they have bought it, unless you gave them your consent)
-# if you have purchased a valid license
-# from the authors, typically via Odoo Apps, or if you have received a written
-# agreement from the authors of the Software (see the COPYRIGHT file).
-#
-# You may develop Odoo modules that use the Software as a library (typically
-# by depending on it, importing it and using its resources), but without copying
-# any source code or material from the Software. You may distribute those
-# modules under the license of your choice, provided that this license is
-# compatible with the terms of the Odoo Proprietary License (For example:
-# LGPL, MIT, or proprietary licenses similar to this one).
-#
-# It is forbidden to publish, distribute, sublicense, or sell copies of the Software
-# or modified copies of the Software.
-#
-# The above copyright notice and this permission notice must be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-# DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-########################################################################################################################
+# ######################################################################
+# © 2015-2018 Marcos Organizador de Negocios SRL. (https://marcos.do/)
+#             Eneldo Serrata <eneldo@marcos.do>
+# © 2017-2018 iterativo SRL. (https://iterativo.do/)
+#             Gustavo Valverde <gustavo@iterativo.do>
+
+# This file is part of NCF Manager.
+
+# NCF Manager is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# NCF Manager is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with NCF Manager.  If not, see <http://www.gnu.org/licenses/>.
+# ######################################################################
 
 import re
-import openpyxl
-from odoo import api, fields, models, tools, _
+from odoo import api, fields, models
 from tempfile import TemporaryFile
+import base64
 
 import logging
 
 _logger = logging.getLogger(__name__)
+
+try:
+    import openpyxl
+except(ImportError, IOError) as err:
+    _logger.debug(err)
 
 CURRENCY_DISPLAY_PATTERN = re.compile(r'(\w+)\s*(?:\((.*)\))?')
 
@@ -49,7 +41,8 @@ CURRENCY_DISPLAY_PATTERN = re.compile(r'(\w+)\s*(?:\((.*)\))?')
 class Currency(models.Model):
     _inherit = "res.currency"
 
-    bc_rate_xls = fields.Binary(string="Historico en Excel de tasa banco central")
+    bc_rate_xls = fields.Binary(string=u"Histórico en Excel de Tasas del Banco"
+                                       " Central")
 
     @api.multi
     def update_rate_from_files(self):
@@ -67,9 +60,10 @@ class Currency(models.Model):
                       "Dic": "12"
                       }
 
-        self.env["res.currency.rate"].search([('currency_id', '=', 3)]).unlink()
+        self.env["res.currency.rate"].search(
+            [('currency_id', '=', 3)]).unlink()
 
-        file = self.bc_rate_xls.decode('base64')
+        file = self.bc_rate_xls.base64.b64encode()
         excel_fileobj = TemporaryFile('wb+')
         excel_fileobj.write(file)
         excel_fileobj.seek(0)
@@ -86,13 +80,13 @@ class Currency(models.Model):
             year = str(row[0].value)
             month = month_dict[row[1].value.strip()]
             day = str(row[2].value).zfill(2)
-            name = u"{}-{}-{} {}".format(year, month, day, fields.Datetime.now().split(" ")[1])
+            name = u"{}-{}-{} {}".format(year, month,
+                                         day, fields.Datetime.now().split(" ")[1])
             rate = float(row[4].value)
             self.env["res.currency.rate"].create({"name": name,
                                                   "rate": 1 / rate,
                                                   "currency_id": 3})
-            _logger.info(u"UDS rate create {}".format(name))
-
+            _logger.info("USD rate created {}".format(name))
 
     @api.multi
     def _compute_current_rate(self):
@@ -102,24 +96,26 @@ class Currency(models.Model):
         :return:
         """
         date = self._context.get('date') or fields.Datetime.now()
-        company_id = self._context.get('company_id') or self.env['res.users']._get_company().id
+        company_id = self._context.get(
+            'company_id') or self.env['res.users']._get_company().id
         # the subquery selects the last rate before 'date' for the given currency/company
-        query = """SELECT c.id, (SELECT r.rate FROM res_currency_rate r
-                                  WHERE r.currency_id = c.id AND r.name::date = %s
-                                    AND (r.company_id IS NULL OR r.company_id = %s)
-                               ORDER BY r.company_id, r.name DESC
-                                  LIMIT 1) AS rate
-                   FROM res_currency c
-                   WHERE c.id IN %s"""
+        query = """SELECT c.id, (
+            SELECT r.rate FROM res_currency_rate r
+            WHERE r.currency_id = c.id AND r.name::date <= %s
+            AND (r.company_id IS NULL OR r.company_id = %s)
+            ORDER BY r.company_id, r.name DESC
+            LIMIT 1) AS rate
+                FROM res_currency c
+                WHERE c.id IN %s"""
 
         self._cr.execute(query, (date, company_id, tuple(self.ids)))
         currency_rates = dict(self._cr.fetchall())
 
         query = """SELECT r.currency_id, r.id FROM res_currency_rate r
-                                  WHERE r.currency_id IN %s AND r.name::date = %s
-                                    AND (r.company_id IS NULL OR r.company_id = %s)
-                               ORDER BY r.company_id, r.name DESC
-                                  LIMIT 1"""
+                    WHERE r.currency_id IN %s AND r.name::date = %s
+                    AND (r.company_id IS NULL OR r.company_id = %s)
+                    ORDER BY r.company_id, r.name DESC
+                    LIMIT 1"""
 
         self._cr.execute(query, (tuple(self.ids), date, company_id))
         rate_ids = dict(self._cr.fetchall())
@@ -141,12 +137,15 @@ class CurrencyRate(models.Model):
             if rec.rate > 0:
                 rec.converted = 1 / rec.rate
 
+    converted = fields.Float(compute=_get_converted, digits=(12, 4))
+
     @api.multi
     def name_get(self):
         result = []
         for rate in self:
-            result.append((rate.id, "{} | Tasa: {}".format(rate.name, rate.converted)))
+            result.append(
+                (rate.id, "{} | Tasa: {}".format(rate.name, rate.converted)))
         return result
 
-    rate = fields.Float(digits=(12, 12), help='The rate of the currency to the currency of rate 1')
-    converted = fields.Float(compute=_get_converted, digits=(12, 4))
+    rate = fields.Float(
+        digits=(12, 12), help='The rate of the currency to the currency of rate 1')

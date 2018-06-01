@@ -1,131 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-        <record id="ncf_manager_account_journal_form" model="ir.ui.view">
-            <field name="name">ncf manager aacount journal form</field>
-            <field name="model">account.journal</field>
-            <field name="inherit_id" ref="account.view_account_journal_form"/>
-            <field name="arch" type="xml">
-                <field name="type" position="after">
-                    <field name="ncf_control" attrs="{'invisible': [('type','!=','sale')]}"/>
-                    <field name="purchase_type" attrs="{'invisible': [('type','!=','purchase')]}" widget="radio"/>
-                    <field name="ncf_remote_validation" attrs="{'invisible': [('type','!=','purchase')]}"/>
-                    <field name="caja_chica" attrs="{'invisible': [('type','!=','cash')]}"/>
-                    <field name="partner_id" attrs="{'invisible': [('caja_chica','!=',True)],'required': [('caja_chica','=',True)]}"/>
-                </field>
+    <record id="ncf_manager_account_journal_form" model="ir.ui.view">
+        <field name="name">ncf manager aacount journal form</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/*[1]" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <field name="ncf_ready" invisible="1"/>
+                    <button class="oe_stat_button" type="object" name="create_ncf_sequence" icon="fa-database"
+                            attrs="{'invisible':['|',('ncf_control','!=',True),('ncf_ready','!=',False)]}" string="Generar NCF">
+                    </button>
+                </div>
+            </xpath>
 
+            <field name="type" position="after">
+                <field name="ncf_control" attrs="{'invisible': [('type','!=','sale')]}"/>
+                <field name="purchase_type" attrs="{'invisible': [('type','!=','purchase')]}" widget="radio"/>
+                <field name="ncf_remote_validation" attrs="{'invisible': [('type','!=','purchase')]}"/>
+                <field name="payment_form" attrs="{'invisible': [('type','not in',('cash','bank'))], 'required': [('type','in',('cash','bank'))]}"/>
             </field>
-        </record>
 
-        <record id="ncf_manager_account_tax_form" model="ir.ui.view">
-            <field name="name">ncf manager account tax form</field>
-            <field name="model">account.tax</field>
-            <field name="inherit_id" ref="account.view_tax_form"/>
-            <field name="arch" type="xml">
+            <notebook>
+                <page string="Secuencias NCF" attrs="{'invisible':[('ncf_control','!=',True)]}">
+                    <group>
+                        <field name="prefix"/>
+                        <field name="special_fiscal_position_id"/>
+                    </group>
+                    <field name="date_range_ids">
+                        <tree>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="number_next_actual"/>
+                            <field name="max_number_next"/>
+                            <field name="sale_fiscal_type"/>
+                        </tree>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
 
-                <field name="type_tax_use" position="after">
-                    <field name="purchase_tax_type" widget="radio"
-                           attrs="{'invisible': [('type_tax_use','!=','purchase')]}"/>
-                </field>
-                <field name="price_include" position="before">
-                    <field name="tax_except"/>
-                </field>
-                
-                <notebook>
-                    <page string="Cofiguración declaraciones fiscales">
-                        <group string="Configuración de celdas para los formularios de la DGII en excel">
-                            <field name="base_it1_cels"/>
-                            <field name="tax_it1_cels"/>
-                            <field name="base_ir17_cels"/>
-                            <field name="tax_ir17_cels"/>
-                        </group>
-                        <label string="NOTA: Si el valor o la base del impuesto se coloca en varias celtas debe serarlas por coma sin espacios"/>
-                    </page>
-                </notebook>
-
+    <record id="ncf_manager_account_tax_form" model="ir.ui.view">
+        <field name="name">ncf manager account tax form</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            <field name="type_tax_use" position="after">
+                <field name="purchase_tax_type" widget="radio"
+                       attrs="{'invisible': [('type_tax_use','!=','purchase')]}"/>
+                <field name="isr_retention_type"
+                       attrs="{'invisible': [('purchase_tax_type','!=','isr')],
+                               'required': [('purchase_tax_type','=','isr')]}"/>
             </field>
-        </record>
+        </field>
+    </record>
 
-        <menuitem id="marcos_account_dgii_menu" name="DGII" parent="account.menu_finance" sequence="5"
-                  groups="account.group_account_user"/>
-
-        <menuitem id="marcos_account_dgii_file_menu" name="Archivos" parent="marcos_account_dgii_menu" sequence="5"/>
-
-
-        <record id="view_move_line_tree" model="ir.ui.view">
-            <field name="name">account.move.line.form</field>
-            <field name="model">account.move.line</field>
-            <field name="inherit_id" ref="account.view_move_line_tree"/>
-            <field name="arch" type="xml">
-                <field name="credit" position="after">
-                    <field name="balance" sum="Balance" invisible="0"/>
-                    <field name="amount_residual" invisible="1"/>
-                </field>
-            </field>
-        </record>
-
-        <record id="account.action_account_moves_all_a" model="ir.actions.act_window">
-            <field name="context">{'journal_type':'general'}</field>
-            <field name="name">Journal Items</field>
-            <field name="res_model">account.move.line</field>
-            <field name="view_id" ref="account.view_move_line_tree"/>
-            <field name="view_mode">tree,form,pivot,graph</field>
-        </record>
-
-        <menuitem action="account.action_account_moves_all_a" icon="STOCK_JUSTIFY_FILL"
-                  id="account.menu_action_account_moves_all"
-                  parent="account.menu_finance_entries" sequence="1" groups="account.group_account_manager"/>
-
-        <record id="view_account_move_line_filter" model="ir.ui.view">
-            <field name="name">account.move.line.filter</field>
-            <field name="model">account.move.line</field>
-            <field name="inherit_id" ref="account.view_account_move_line_filter"/>
-            <field name="arch" type="xml">
-                <filter name="posted" position="after">
-                    <separator/>
-                    <filter name="receivable" string="Receivable" domain="[('account_id.reconcile','=',True)]"
-                            help="Lines of Receivable Accounts"/>
-                    <filter name="payable" string="Payable" domain="[('account_id.reconcile','=',True)]"
-                            help="Lines of Payable Accounts"/>
-                </filter>
-            </field>
-        </record>
-
-
-        <record model="ir.ui.view" id="view_move_line_pivot">
-            <field name="name">account.move.line.pivot</field>
-            <field name="model">account.move.line</field>
-            <field name="arch" type="xml">
-                <pivot string="Invoices" display_quantity="true">
-                    <field name="partner_id"/>
-                </pivot>
-            </field>
-        </record>
-
-        <record model="ir.ui.view" id="view_move_line_graph">
-            <field name="name">account.move.line.graph</field>
-            <field name="model">account.move.line</field>
-            <field name="arch" type="xml">
-                <graph string="Invoices">
-                    <field name="partner_id"/>
-                </graph>
-            </field>
-        </record>
-
-        <record id="ncf_manager_view_account_move_line_filter" model="ir.ui.view">
-            <field name="name">ncf_manager_view_account_move_line_filter</field>
-            <field name="model">account.move.line</field>
-            <field name="inherit_id" ref="account.view_account_move_line_filter"/>
-            <field name="arch" type="xml">
-
-                <field name="date" position="after">
-                    <field name="debit"/>
-                    <field name="credit"/>
-                </field>
-
-            </field>
-        </record>
-
-
-    </data>
+    <record id="view_account_form_inherited" model="ir.ui.view">
+        <field name="name">view.account.form.inherited</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="income_type"
+                attrs="{'invisible': [('user_type_id','not in',[%(account.data_account_type_revenue)d,
+                %(account.data_account_type_other_income)d, %(account.data_account_type_fixed_assets)d,
+                %(account.data_account_type_current_assets)d, %(account.data_account_type_non_current_assets)d ])]}"/>
+                <field name="expense_type"
+                attrs="{'invisible': [('user_type_id','not in',[%(account.data_account_type_direct_costs)d,
+                %(account.data_account_type_expenses)d, %(account.data_account_type_depreciation)d])]}"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

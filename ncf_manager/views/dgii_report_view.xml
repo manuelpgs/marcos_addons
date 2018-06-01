@@ -486,9 +486,15 @@
 
 
         <!-- This Menu Item must have a parent and an action -->
-        <menuitem action="dgii_report_action" id="marcos_ncf_dgii_report_wizard_menu"
+        <!-- THIS IS ORIGINAL MARCOS SETTINGS #TODO HEROHAT -->
+        <!-- <menuitem action="dgii_report_action" id="marcos_ncf_dgii_report_wizard_menu"
                   parent="ncf_manager.marcos_account_dgii_menu"
-                  sequence="2"/>
+                  sequence="2"/> -->
+
+        <!-- THIS IS THE NEW ONE COPY FROM LN10 DOMINICANA #TODO HEROHAT -->
+        <menuitem action="dgii_report_action" id="invoice_journal_config_menu"
+                  parent="account.account_account_menu"
+                  groups="account.group_account_user,account.group_account_manager,account.group_account_invoice"/>                  
 
         <record id="dgii_eport_purchase_line_action" model="ir.actions.act_window">
             <field name="name">Consultas lineas del 606</field>
@@ -506,8 +512,9 @@
         </record>
 
         <!-- This Menu Item must have a parent and an action -->
-        <menuitem id="dgii_eport_purchase_line_menu" name="Consultas lineas del 606" parent="marcos_account_dgii_menu"
-                  action="dgii_eport_purchase_line_action" sequence="3"/>
+        <!-- THIS WAS COMMENT OUT BY HEROHAT #TODO -->
+        <!-- <menuitem id="dgii_eport_purchase_line_menu" name="Consultas lineas del 606" parent="marcos_account_dgii_menu"
+                  action="dgii_eport_purchase_line_action" sequence="3"/> -->
 
         <record id="dgii_report_sale_line_action" model="ir.actions.act_window">
             <field name="name">Consultas lineas del 607</field>
@@ -525,8 +532,9 @@
         </record>
 
         <!-- This Menu Item must have a parent and an action -->
-        <menuitem id="dgii_report_sale_line_menu" name="Consultas lineas del 607" parent="marcos_account_dgii_menu"
-                  action="dgii_report_sale_line_action" sequence="4"/>
+        <!-- THIS WAS COMMENT OUT BY HEROHAT #TODO -->
+        <!-- <menuitem id="dgii_report_sale_line_menu" name="Consultas lineas del 607" parent="marcos_account_dgii_menu"
+                  action="dgii_report_sale_line_action" sequence="4"/> -->
 
 
     </data>

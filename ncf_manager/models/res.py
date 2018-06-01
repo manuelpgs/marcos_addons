@@ -1,61 +1,81 @@
 # -*- coding: utf-8 -*-
-########################################################################################################################
-#  Copyright (c) 2015 - Marcos Organizador de Negocios SRL. (<https://marcos.do/>)
-#  Write by Eneldo Serrata (eneldo@marcos.do)
-#  See LICENSE file for full copyright and licensing details.
-#
-# Odoo Proprietary License v1.0
-#
-# This software and associated files (the "Software") may only be used
-# (nobody can redistribute (or sell) your module once they have bought it, unless you gave them your consent)
-# if you have purchased a valid license
-# from the authors, typically via Odoo Apps, or if you have received a written
-# agreement from the authors of the Software (see the COPYRIGHT file).
-#
-# You may develop Odoo modules that use the Software as a library (typically
-# by depending on it, importing it and using its resources), but without copying
-# any source code or material from the Software. You may distribute those
-# modules under the license of your choice, provided that this license is
-# compatible with the terms of the Odoo Proprietary License (For example:
-# LGPL, MIT, or proprietary licenses similar to this one).
-#
-# It is forbidden to publish, distribute, sublicense, or sell copies of the Software
-# or modified copies of the Software.
-#
-# The above copyright notice and this permission notice must be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-# DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-########################################################################################################################
-from lxml import etree
+# ######################################################################
+# © 2015-2018 Marcos Organizador de Negocios SRL. (https://marcos.do/)
+#             Eneldo Serrata <eneldo@marcos.do>
+# © 2017-2018 iterativo SRL. (https://iterativo.do/)
+#             Gustavo Valverde <gustavo@iterativo.do>
+# © 2017-2018 Neotecnology Cyber City SRL. (http://neotec.do/)
+#             Yasmany Castillo <yasmany003@gmail.com>
 
-from odoo import models, fields, api, exceptions
+# This file is part of NCF Manager.
 
-import re
+# NCF Manager is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
+# NCF Manager is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with NCF Manager.  If not, see <http://www.gnu.org/licenses/>.
+# ######################################################################
 import logging
 
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
+
 _logger = logging.getLogger(__name__)
+
+try:
+    from stdnum.do import rnc, cedula
+except(ImportError, IOError) as err:
+    _logger.debug(err)
 
 
 class ResCompany(models.Model):
     _inherit = 'res.company'
 
-    payment_tax_on_606 = fields.Boolean(u"Para el 606 declarar retenciones al pago")
-    country_id = fields.Many2one('res.country', compute='_compute_address', inverse='_inverse_country',
+    payment_tax_on_606 = fields.Boolean("Reportar retenciones del 606 al pago")
+
+    country_id = fields.Many2one('res.country', compute='_compute_address',
+                                 inverse='_inverse_country',
                                  string="Country", default=62)
+
+    @api.onchange("name")
+    def onchange_company_name(self):
+        if self.name:
+            result = self.env['res.partner'].validate_rnc_cedula(
+                self.name, model='company')
+            if result:
+                self.name = result.get('name')
+                self.vat = result.get('vat')
+
+    @api.onchange("vat")
+    def onchange_company_vat(self):
+        if self.vat:
+            result = self.env['res.partner'].validate_rnc_cedula(
+                self.vat, model='company')
+            if result:
+                self.name = result.get('name')
+                self.vat = result.get('vat')
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-
+    def _split_vat(self, vat):
+        vat_country, vat_number = vat[:2].lower(), vat[2:].replace(' ', '')
+        if vat_country.isnumeric():
+            if self.country_id.code:
+                vat_country = self.country_id.code
+            elif self.company_id.country_id.code:
+                vat_country = self.company_id.country_id.code
+            else:
+                vat_country = 'DO'
+        return vat_country, vat_number
 
     @api.multi
     @api.depends('sale_fiscal_type')
@@ -66,40 +86,51 @@ class ResPartner(models.Model):
             else:
                 rec.fiscal_info_required = False
 
-            if not rec.vat:
-                rec.vat_readonly = False
-            else:
-                rec.vat_readonly = True
+    sale_fiscal_type = fields.Selection(
+        [("final", "Consumidor Final"),
+         ("fiscal", u"Crédito Fiscal"),
+         ("gov", "Gubernamental"),
+         ("special", u"Regímenes Especiales"),
+         ("unico", u"Único Ingreso")],
+        string="Tipo de comprobante", default="final")
 
-    sale_fiscal_type = fields.Selection([
-        ("final", u"Consumidor final"),
-        ("fiscal", u"Para credito fiscal"),
-        ("gov", u"Gubernamental"),
-        ("special", u"Regimenes especiales"),
-        ("unico", u"Unico ingreso")
-    ], string="Tipo de comprobante", default="final")
+    sale_fiscal_type_list = [
+        {"id": "final", "name": "Consumidor Final", "ticket_label": "Consumo", "is_default": True},
+        {"id": "fiscal", "name": "Crédito Fiscal"},
+        {"id": "gov", "name": "Gubernamental"},
+        {"id": "special", "name": "Regímenes Especiales"},
+        {"id": "unico", "name": "Único Ingreso"}
+    ]
 
-    purchase_fiscal_type = fields.Selection([
-        ('01', u'01 - Gastos de personal'),
-        ('02', u'02 - Gastos por trabajo, suministros y servicios'),
-        ('03', u'03 - Arrendamientos'),
-        ('04', u'04 - Gastos de Activos Fijos'),
-        ('05', u'05 - Gastos de Representación'),
-        ('06', u'06 - Otras Deducciones Admitidas'),
-        ('07', u'07 - Gastos Financieros'),
-        ('08', u'08 - Gastos Extraordinarios'),
-        ('09', u'09 - Compras y Gastos que forman parte del Costo de Venta'),
-        ('10', u'10 - Adquisiciones de Activos'),
-        ('11', u'11 - Gastos de Seguro')
-    ], string=u"Tipo de gasto")
+    sale_fiscal_type_vat = {
+        "rnc": ["fiscal", "gov", "special"],
+        "ced": ["final", "fiscal"],
+        "other": ["final"],
+        "no_vat": ["final", "unico"]
+    }
+
+    expense_type = fields.Selection(
+        [('01', '01 - Gastos de Personal'),
+         ('02', '02 - Gastos por Trabajo, Suministros y Servicios'),
+         ('03', '03 - Arrendamientos'),
+         ('04', '04 - Gastos de Activos Fijos'),
+         ('05', u'05 - Gastos de Representación'),
+         ('06', '06 - Otras Deducciones Admitidas'),
+         ('07', '07 - Gastos Financieros'),
+         ('08', '08 - Gastos Extraordinarios'),
+         ('09', '09 - Compras y Gastos que forman parte del Costo de Venta'),
+         ('10', '10 - Adquisiciones de Activos'),
+         ('11', '11 - Gastos de Seguro')],
+        string="Tipo de gasto")
 
     fiscal_info_required = fields.Boolean(compute=_fiscal_info_required)
-    vat_readonly = fields.Boolean(compute=_fiscal_info_required)
-    country_id = fields.Many2one('res.country', string='Country', ondelete='restrict', default=62)
+    country_id = fields.Many2one('res.country', string='Country',
+                                 ondelete='restrict', default=62)
 
     @api.model
     def name_search(self, name, args=None, operator='ilike', limit=100):
-        res = super(ResPartner, self).name_search(name, args=args, operator=operator, limit=100)
+        res = super(ResPartner, self).name_search(name, args=args,
+                                                  operator=operator, limit=100)
         if not res and name:
             if len(name) in (9, 11):
                 partners = self.search([('vat', '=', name)])
@@ -110,78 +141,94 @@ class ResPartner(models.Model):
                 res = partners.name_get()
         return res
 
+    @api.model
+    def validate_rnc_cedula(self, number, model='partner'):
+        if number:
+            result, dgii_vals = {}, False
+            model = 'res.partner' if model == 'partner' else 'res.company'
+
+            if number.isdigit() and len(number) in (9, 11):
+                message = u"El contacto: %s, está registrado con este RNC/Céd."
+                contact = self.search([('vat', '=', number)])
+                if contact:
+                    name = contact.name if len(contact) == 1 else ", ".join(
+                        [x.name for x in contact])
+                    raise UserError(_(message % name))
+
+                try:
+                    is_rnc = len(number) == 9
+                    rnc.validate(number) if is_rnc else cedula.validate(number)
+                except Exception as e:
+                    raise ValidationError(_(u"RNC/Ced Inválido"))
+
+                dgii_vals = rnc.check_dgii(number)
+                if dgii_vals is None:
+                    if is_rnc:
+                        raise ValidationError(_("RNC no disponible en DGII"))
+                    result['vat'] = number
+                    result['sale_fiscal_type'] = "final"
+                else:
+                    result['name'] = dgii_vals.get(
+                        "name", False) or dgii_vals.get("commercial_name", "")
+                    result['vat'] = dgii_vals.get('rnc')
+
+                    if model == 'res.partner':
+                        result['is_company'] = True if is_rnc else False,
+                        result['sale_fiscal_type'] = "fiscal"
+            return result
+
+    @api.onchange("name")
+    def onchange_partner_name(self):
+        if self.name:
+            result = self.validate_rnc_cedula(self.name)
+            if result:
+                self.name = result.get('name')
+                self.vat = result.get('vat')
+                self.is_company = result.get('is_company', False)
+                self.sale_fiscal_type = result.get('sale_fiscal_type')
+
+    @api.onchange("vat")
+    def onchange_partner_vat(self):
+        if self.vat:
+            result = self.validate_rnc_cedula(self.vat)
+            if result:
+                self.name = result.get('name')
+                self.vat = result.get('vat')
+                self.is_company = result.get('is_company', False)
+                self.sale_fiscal_type = result.get('sale_fiscal_type')
+
     @api.multi
-    def update_partner_name_from_dgii(self):
+    def rewrite_due_date(self):
         for rec in self:
-            if rec.vat:
-                res = self.env["marcos.api.tools"].rnc_cedula_validation(self.vat)
-                if res[0] == 1:
-                    self.write({"name": res[1]["name"]})
+            invoice_ids = self.env["account.invoice"].search(
+                [('state', '=', 'open'), ('partner_id', '=', self.id)])
+            for inv in invoice_ids:
+                pterm = rec.property_payment_term_id or rec.property_supplier_payment_term_id
+                if pterm:
+                    pterm_list = pterm.with_context(currency_id=inv.company_id.currency_id.id).compute(
+                        value=1, date_ref=inv.date_invoice)[0]
+                    date_due = max(line[0] for line in pterm_list)
+                    inv.date_due = date_due
+                    for line in inv.move_id.line_ids:
+                        line.date_maturity = date_due
+                else:
+                    raise UserError(
+                        _(u"Debe especificar el término de pago del contacto"))
 
-    def validate_vat_or_name(self, vals):
-        vat_or_name = vals.get("vat", False) or vals.get("name", False)
-        if vat_or_name:
-            vat = re.sub("[^0-9]", "", vat_or_name)
-            if vat.isdigit():
-                if len(vat) >= 9:
-                    partner_id = self.search([('vat', '=', vat)])
-                    if partner_id:
-                        return partner_id
-                    else:
-                        res = self.env["marcos.api.tools"].rnc_cedula_validation(vat)
-                        if res[0] == 1:
-                            vals.update(res[1])
-                        else:
-                            return False
-        return vals
-
-    @api.multi
-    def write(self, vals):
-        if vals.get("name", False):
-            partner_id = self.search([('name', '=', vals["name"])])
-            if not self._context.get("job_uuid", False):
-                if partner_id:
-                    raise exceptions.ValidationError(
-                        u"Ya existe un contacto registrado con este nombre de {}! incluir otro apellido o informacion"
-                        u"adicional si está seguro que es otro diferente al que ya esxite".format(
-                            vals["name"]))
-
-        for rec in self:
-            if vals.get("parent_id", False) or rec.parent_id:
-                return super(ResPartner, self).write(vals)
-
-        dgii_vals = self.validate_vat_or_name(vals)
-        if isinstance(dgii_vals, dict):
-            vals = dgii_vals
-
-        if not vals:
-            raise exceptions.ValidationError(u"EL RNC NO ES VALIDO.")
-
-        return super(ResPartner, self).write(vals)
+    @api.model
+    def get_sale_fiscal_type_selection(self):
+        return {"sale_fiscal_type": self._fields['sale_fiscal_type'].selection,
+                "sale_fiscal_type_list": self.sale_fiscal_type_list,
+                "sale_fiscal_type_vat": self.sale_fiscal_type_vat}
 
     @api.model
     def create(self, vals):
-        if self._context.get("install_mode", False):
-            return super(ResPartner, self).create(vals)
+        if self._context.get("quickcreate", False):
+            vat = vals.get("vat", False)
+            result = self.validate_rnc_cedula(vat)
+            if result:
+                vals.update({"name": result["name"]})
 
-        if vals.get("name", False):
-            partner_id = self.search([('name', '=', vals["name"])])
-            if not self._context.get("job_uuid", False):
-                if partner_id:
-                    raise exceptions.ValidationError(
-                        u"Ya existe un contacto registrado con este nombre de {}! incluir otro apellido o informacion"
-                        u"adicional si está seguro que es otro diferente al que ya esxite".format(
-                            vals["name"]))
-
-        vals = self.validate_vat_or_name(vals)
-        if not vals:
-            raise exceptions.ValidationError(u"EL RNC NO ES VALIDO.")
-
-        if not isinstance(vals, dict):
-            return vals
-
-        if vals.get("vat", False):
-            vals.update({"sale_fiscal_type": "fiscal", "is_company": True})
         return super(ResPartner, self).create(vals)
 
     @api.model
@@ -194,44 +241,7 @@ class ResPartner(models.Model):
                 if partner:
                     return partner.name_get()[0]
                 else:
-                    new_partner = self.create({"vat": name})
+                    new_partner = self.with_context(quickcreate=True).create({"vat": name})
                     return new_partner.name_get()[0]
             else:
                 return super(ResPartner, self).name_create(name)
-
-    @api.onchange("sale_fiscal_type")
-    def onchange_sale_fiscal_type(self):
-        if self.sale_fiscal_type == "special":
-            self.property_account_position_id = self.env.ref("ncf_manager.ncf_manager_special_fiscal_position")
-        else:
-            self.property_account_position_id = False
-
-    @api.model
-    def fields_view_get(self, view_id=None, view_type='form', toolbar=False, submenu=False):
-        result = super(ResPartner, self).fields_view_get(view_id=view_id, view_type=view_type, toolbar=toolbar,
-                                                         submenu=submenu)
-        if view_type == 'form' and result.get("name", False) == "res.partner.form":
-            arch = etree.fromstring(result['arch'])
-            name_field = arch.xpath("//field[@name='name']")
-            for field in name_field:
-                field.set(u"placeholder", u"Nombre, RNC o Cédula")
-
-            result["arch"] = etree.tostring(arch)
-
-        return result
-
-    @api.multi
-    def rewrite_due_date(self):
-        for rec in self:
-            invoice_ids = self.env["account.invoice"].search([('state','=','open'),('partner_id','=',self.id)])
-            for inv in invoice_ids:
-                pterm = rec.property_payment_term_id or rec.property_supplier_payment_term_id
-                if pterm:
-                    currency_id = inv.currency_id.id or inv.company_id.currency_id.id
-                    pterm_list = pterm.with_context(currency_id=currency_id).compute(value=1, date_ref=inv.date_invoice)[0]
-                    date_due = max(line[0] for line in pterm_list)
-                    inv.date_due = date_due
-                    for line in inv.move_id.line_ids:
-                        line.date_maturity = date_due
-                else:
-                    raise exceptions.ValidationError(u"Debe espesificar el termino de pago del contacto")
