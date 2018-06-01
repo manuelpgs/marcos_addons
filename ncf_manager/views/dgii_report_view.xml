@@ -491,10 +491,10 @@
                   parent="ncf_manager.marcos_account_dgii_menu"
                   sequence="2"/> -->
 
-        <!-- THIS IS THE NEW ONE COPY FROM LN10 DOMINICANA #TODO HEROHAT -->
-        <menuitem action="dgii_report_action" id="invoice_journal_config_menu"
+        <!-- THIS IS THE NEW ONE COPY FROM LN10 DOMINICANA, but it overwrite the other most important menu.... #TODO HEROHAT -->
+        <!-- <menuitem action="dgii_report_action" id="invoice_journal_config_menu"
                   parent="account.account_account_menu"
-                  groups="account.group_account_user,account.group_account_manager,account.group_account_invoice"/>                  
+                  groups="account.group_account_user,account.group_account_manager,account.group_account_invoice"/>                   -->
 
         <record id="dgii_eport_purchase_line_action" model="ir.actions.act_window">
             <field name="name">Consultas lineas del 606</field>
