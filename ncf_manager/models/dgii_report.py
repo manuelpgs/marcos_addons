@@ -35,7 +35,7 @@
 ########################################################################################################################
 
 from odoo import models, fields, api, exceptions
-from var_dump import var_dump
+# from var_dump import var_dump
 # from pprint import pprint as pp
 
 from openpyxl import load_workbook
@@ -623,8 +623,6 @@ class DgiiReport(models.Model):
                 "RETENCION_RENTA": RETENCION_RENTA and RETENCION_RENTA or 0,
                 "TIPO_BIENES_SERVICIOS_COMPRADOS": invoice_id.expense_type
             }
-
-            var_dump('************** invoice_id.expense_type: ', invoice_id.expense_type)
 
             no_tax_line = invoice_id.invoice_line_ids.filtered(lambda x: not x.invoice_line_tax_ids)
 
