@@ -350,7 +350,9 @@ class DgiiReport(models.Model):
 
         return RNC_CEDULA, TIPO_IDENTIFICACION
 
-    def validate_fiscal_information(self, vat, ncf, invoice_type, origin_invoice_ids):
+    # def validate_fiscal_information(self, vat, ncf, invoice_type, origin_invoice_ids): # AttributeError: 'account.invoice' object has no attribute 'origin_invoice_ids', even in the old marcos addons
+    
+    def validate_fiscal_information(self, vat, ncf, invoice_type):
         api_marcos = self.env["marcos.api.tools"]
 
         error_list = []
@@ -363,8 +365,8 @@ class DgiiReport(models.Model):
         if len(origin_invoice_ids) > 1 and invoice_type in ("out_refund", "in_refund"):
             error_list.append(u"NC/ND Afectando varias facturas")
 
-        if not origin_invoice_ids and invoice_type in ("out_refund", "in_refund"):
-            error_list.append(u"NC/ND sin comprobante que afecta")
+        # if not origin_invoice_ids and invoice_type in ("out_refund", "in_refund"):
+        #     error_list.append(u"NC/ND sin comprobante que afecta")
 
         if not ncf:
             error_list.append(u"Factura validada sin número asignado")
@@ -551,8 +553,11 @@ class DgiiReport(models.Model):
 
             RNC_CEDULA, TIPO_IDENTIFICACION = self.get_identification_info(invoice_id.partner_id.vat)
 
-            error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type,
-                                                         invoice_id.origin_invoice_ids)
+            # error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type,
+                                                        #  invoice_id.origin_invoice_ids) # AttributeError: 'account.invoice' object has no attribute 'origin_invoice_ids'.  Even in the old marcos addons
+            
+            error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type)
+                        
             if error_msg:
                 for error in error_msg:
                     if not error_list.get(invoice_id.id, False):
