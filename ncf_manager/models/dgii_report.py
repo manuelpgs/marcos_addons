@@ -103,8 +103,8 @@ class DgiiReport(models.Model):
                     rec.ITBIS_RETENIDO += purchase.ITBIS_RETENIDO
                     rec.ITBIS_FACTURADO_SERVICIOS += purchase.ITBIS_FACTURADO_SERVICIOS
 
-                summary_dict[purchase.invoice_id.purchase_fiscal_type]["count"] += 1
-                summary_dict[purchase.invoice_id.purchase_fiscal_type]["amount"] += purchase.MONTO_FACTURADO
+                summary_dict[purchase.invoice_id.expense_type]["count"] += 1
+                summary_dict[purchase.invoice_id.expense_type]["amount"] += purchase.MONTO_FACTURADO
 
             rec.ITBIS_TOTAL_PAYMENT = rec.ITBIS_TOTAL - rec.ITBIS_TOTAL_NC
             rec.TOTAL_MONTO_PAYMENT = rec.TOTAL_MONTO_FACTURADO - rec.TOTAL_MONTO_NC
@@ -597,7 +597,7 @@ class DgiiReport(models.Model):
                 "ITBIS_FACTURADO_SERVICIOS": 0,
                 "ITBIS_RETENIDO": ITBIS_RETENIDO and ITBIS_RETENIDO or 0,
                 "RETENCION_RENTA": RETENCION_RENTA and RETENCION_RENTA or 0,
-                "TIPO_BIENES_SERVICIOS_COMPRADOS": invoice_id.purchase_fiscal_type
+                "TIPO_BIENES_SERVICIOS_COMPRADOS": invoice_id.expense_type
             }
 
             no_tax_line = invoice_id.invoice_line_ids.filtered(lambda x: not x.invoice_line_tax_ids)
