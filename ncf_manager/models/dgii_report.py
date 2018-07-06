@@ -49,6 +49,11 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+try:
+    from stdnum.do import ncf, rnc, cedula
+except(ImportError, IOError) as err:
+    _logger.debug(err)
+
 
 class DgiiReport(models.Model):
     _name = "dgii.report"
@@ -351,22 +356,33 @@ class DgiiReport(models.Model):
         return RNC_CEDULA, TIPO_IDENTIFICACION
 
     # def validate_fiscal_information(self, vat, ncf, invoice_type, origin_invoice_ids): # AttributeError: 'account.invoice' object has no attribute 'origin_invoice_ids', even in the old marcos addons
-    
-    def validate_fiscal_information(self, vat, ncf, invoice_type):
-        api_marcos = self.env["marcos.api.tools"]
+
+    def validate_fiscal_information(self, vat, ncf_input, invoice_type):
+
+        # api_marcos = self.env["marcos.api.tools"]
 
         error_list = []
-        if vat and not api_marcos.is_identification(vat):
-            error_list.append(u"RNC/Cédula no es valido")
+        # rnc.check_dgii(term)
+        # if vat and not api_marcos.is_identification(vat):
 
-        if not api_marcos.is_ncf(ncf, invoice_type):
-            error_list.append(u"El NCF no es valido")
+        if vat and len(vat) == 9 and not rnc.is_valid(vat):
+            error_list.append(u"El RNC no es válido")
 
-        if len(origin_invoice_ids) > 1 and invoice_type in ("out_refund", "in_refund"):
-            error_list.append(u"NC/ND Afectando varias facturas")
+        if vat and len(vat) == 11 and not cedula.is_valid(vat):
+            error_list.append(u"La Cédula no es válida")
+
+        # if not api_marcos.is_ncf(ncf, invoice_type):
+        if not ncf.is_valid(ncf_input) or not ncf.check_dgii(vat, ncf_input):
+            error_list.append(u"El NCF no es válido")
+
+        # if len(origin_invoice_ids) > 1 and invoice_type in ("out_refund", "in_refund"):
+        #     error_list.append(u"NC/ND Afectando varias facturas")
 
         # if not origin_invoice_ids and invoice_type in ("out_refund", "in_refund"):
         #     error_list.append(u"NC/ND sin comprobante que afecta")
+
+        if invoice_type in ("out_refund", "in_refund"):
+            error_list.append(u"NC/ND sin comprobante que afecta")
 
         if not ncf:
             error_list.append(u"Factura validada sin número asignado")
@@ -555,9 +571,9 @@ class DgiiReport(models.Model):
 
             # error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type,
                                                         #  invoice_id.origin_invoice_ids) # AttributeError: 'account.invoice' object has no attribute 'origin_invoice_ids'.  Even in the old marcos addons
-            
+
             error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type)
-                        
+
             if error_msg:
                 for error in error_msg:
                     if not error_list.get(invoice_id.id, False):
@@ -883,8 +899,8 @@ class DgiiReport(models.Model):
             [rec.MONTO_FACTURADO for rec in self.purchase_report if rec.NUMERO_COMPROBANTE_MODIFICADO == False])
         TOTAL_MONTO_FACTURADO_NC = sum(
             [rec.MONTO_FACTURADO for rec in self.purchase_report if rec.NUMERO_COMPROBANTE_MODIFICADO != False])
-        TOTAL_MONTO_FACTURADO = "{:.2f}".format(TOTAL_MONTO_FACTURADO_FACTURAS - TOTAL_MONTO_FACTURADO_NC).zfill(16)    
-        
+        TOTAL_MONTO_FACTURADO = "{:.2f}".format(TOTAL_MONTO_FACTURADO_FACTURAS - TOTAL_MONTO_FACTURADO_NC).zfill(16)
+
         RETENCION_RENTA = "{:.2f}".format(sum([rec.RETENCION_RENTA for rec in self.purchase_report])).zfill(12)
 
         header = "606"
@@ -954,7 +970,7 @@ class DgiiReport(models.Model):
             return purchase.NUMERO_COMPROBANTE_FISCAL[1:3]
 
 
-        
+
 
 
 class DgiiReportPurchaseLine(models.Model):
