@@ -706,55 +706,58 @@ class DgiiReport(models.Model):
                     untax_base_amount = untax_base_amount * -1
                     tax_amount = tax_amount*-1
 
-                if tax.tax_id.base_it1_cels:
-                    xls_cels = tax.tax_id.base_it1_cels.split(",")
+                #TODO commented in new ln10 dominicana version
+                # if tax.tax_id.base_it1_cels:
+                #     xls_cels = tax.tax_id.base_it1_cels.split(",")
 
-                    for xls_cel in xls_cels:
-                        if tax.tax_id.amount == 0:
-                            if not xls_dict["it1"].get(xls_cel, False):
-                                xls_dict["it1"].update({xls_cel: untax_base_amount})
-                            else:
-                                xls_dict["it1"][xls_cel] += untax_base_amount
-                        else:
-                            if not xls_dict["it1"].get(xls_cel, False):
-                                xls_dict["it1"].update({xls_cel: tax_base_amount})
-                            else:
-                                xls_dict["it1"][xls_cel] += tax_base_amount
+                #     for xls_cel in xls_cels:
+                #         if tax.tax_id.amount == 0:
+                #             if not xls_dict["it1"].get(xls_cel, False):
+                #                 xls_dict["it1"].update({xls_cel: untax_base_amount})
+                #             else:
+                #                 xls_dict["it1"][xls_cel] += untax_base_amount
+                #         else:
+                #             if not xls_dict["it1"].get(xls_cel, False):
+                #                 xls_dict["it1"].update({xls_cel: tax_base_amount})
+                #             else:
+                #                 xls_dict["it1"][xls_cel] += tax_base_amount
 
-                if tax.tax_id.base_ir17_cels:
-                    xls_cels = tax.tax_id.base_ir17_cels.split(u",")
+                #TODO commented in new ln10 dominicana version
+                # if tax.tax_id.base_ir17_cels:
+                #     xls_cels = tax.tax_id.base_ir17_cels.split(u",")
 
-                    for xls_cel in xls_cels:
-                        xls_cel = xls_cel.split(u"%")
+                #     for xls_cel in xls_cels:
+                #         xls_cel = xls_cel.split(u"%")
 
-                        if len(xls_cel) == 1:
-                            if not xls_dict["ir17"].get(xls_cel[0], False):
-                                xls_dict["ir17"].update({xls_cel[0]: commun_data["MONTO_FACTURADO"]})
-                            else:
-                                xls_dict["ir17"][xls_cel[0]] += commun_data["MONTO_FACTURADO"]
-                        elif len(xls_cel) == 2:
-                            if not xls_dict["ir17"].get(xls_cel[0], False):
-                                xls_dict["ir17"].update(
-                                    {xls_cel[0]: round(commun_data["MONTO_FACTURADO"] * (float(xls_cel[1]) / 100), 2)})
-                            else:
-                                xls_dict["ir17"][xls_cel[0]] += round(
-                                    commun_data["MONTO_FACTURADO"] * (float(xls_cel[1]) / 100), 2)
+                #         if len(xls_cel) == 1:
+                #             if not xls_dict["ir17"].get(xls_cel[0], False):
+                #                 xls_dict["ir17"].update({xls_cel[0]: commun_data["MONTO_FACTURADO"]})
+                #             else:
+                #                 xls_dict["ir17"][xls_cel[0]] += commun_data["MONTO_FACTURADO"]
+                #         elif len(xls_cel) == 2:
+                #             if not xls_dict["ir17"].get(xls_cel[0], False):
+                #                 xls_dict["ir17"].update(
+                #                     {xls_cel[0]: round(commun_data["MONTO_FACTURADO"] * (float(xls_cel[1]) / 100), 2)})
+                #             else:
+                #                 xls_dict["ir17"][xls_cel[0]] += round(
+                #                     commun_data["MONTO_FACTURADO"] * (float(xls_cel[1]) / 100), 2)
 
-                if tax.tax_id.tax_it1_cels:
-                    xls_cels = tax.tax_id.tax_it1_cels.split(",")
-                    for xls_cel in xls_cels:
-                        if not xls_dict["it1"].get(xls_cel, False):
-                            xls_dict["it1"].update({xls_cel: tax_amount})
-                        else:
-                            xls_dict["it1"][xls_cel] += tax_amount
+                #TODO commented in new ln10 dominicana version
+                # if tax.tax_id.tax_it1_cels:
+                #     xls_cels = tax.tax_id.tax_it1_cels.split(",")
+                #     for xls_cel in xls_cels:
+                #         if not xls_dict["it1"].get(xls_cel, False):
+                #             xls_dict["it1"].update({xls_cel: tax_amount})
+                #         else:
+                #             xls_dict["it1"][xls_cel] += tax_amount
 
-                if tax.tax_id.tax_ir17_cels:
-                    xls_cels = tax.tax_id.tax_ir17_cels.split(",")
-                    for xls_cel in xls_cels:
-                        if not xls_dict["ir17"].get(xls_cel, False):
-                            xls_dict["ir17"].update({xls_cel: tax_amount})
-                        else:
-                            xls_dict["ir17"][xls_cel] += tax_amount
+                # if tax.tax_id.tax_ir17_cels:
+                #     xls_cels = tax.tax_id.tax_ir17_cels.split(",")
+                #     for xls_cel in xls_cels:
+                #         if not xls_dict["ir17"].get(xls_cel, False):
+                #             xls_dict["ir17"].update({xls_cel: tax_amount})
+                #         else:
+                #             xls_dict["ir17"][xls_cel] += tax_amount
 
             if invoice_id.type in ("out_invoice", "out_refund") and commun_data["MONTO_FACTURADO"]:
                 sale_report.append((self.id,
