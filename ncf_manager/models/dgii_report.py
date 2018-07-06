@@ -35,7 +35,7 @@
 ########################################################################################################################
 
 from odoo import models, fields, api, exceptions
-# from var_dump import var_dump
+from var_dump import var_dump
 # from pprint import pprint as pp
 
 from openpyxl import load_workbook
@@ -357,7 +357,7 @@ class DgiiReport(models.Model):
 
     # def validate_fiscal_information(self, vat, ncf, invoice_type, origin_invoice_ids): # AttributeError: 'account.invoice' object has no attribute 'origin_invoice_ids', even in the old marcos addons
 
-    def validate_fiscal_information(self, vat, ncf_input, invoice_type):
+    def validate_fiscal_information(self, vat, invoice):
 
         # api_marcos = self.env["marcos.api.tools"]
 
@@ -372,7 +372,7 @@ class DgiiReport(models.Model):
             error_list.append(u"La Cédula no es válida")
 
         # if not api_marcos.is_ncf(ncf, invoice_type):
-        if not ncf.is_valid(ncf_input) or not ncf.check_dgii(vat, ncf_input):
+        if not ncf.is_valid(invoice.number) or not ncf.check_dgii(vat, invoice.number):
             error_list.append(u"El NCF no es válido")
 
         # if len(origin_invoice_ids) > 1 and invoice_type in ("out_refund", "in_refund"):
@@ -381,11 +381,14 @@ class DgiiReport(models.Model):
         # if not origin_invoice_ids and invoice_type in ("out_refund", "in_refund"):
         #     error_list.append(u"NC/ND sin comprobante que afecta")
 
-        if invoice_type in ("out_refund", "in_refund"):
+        if invoice.type in ("out_refund", "in_refund"):
             error_list.append(u"NC/ND sin comprobante que afecta")
 
-        if not ncf:
+        if not invoice.number:
             error_list.append(u"Factura validada sin número asignado")
+
+        if not invoice.expense_type:
+            error_list.append(u"La factura %s no tiene especificado el tipo de costos y gastos requerído por el DGII." % (invoice.number))
 
         return error_list
 
@@ -572,7 +575,7 @@ class DgiiReport(models.Model):
             # error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type,
                                                         #  invoice_id.origin_invoice_ids) # AttributeError: 'account.invoice' object has no attribute 'origin_invoice_ids'.  Even in the old marcos addons
 
-            error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id.number, invoice_id.type)
+            error_msg = self.validate_fiscal_information(RNC_CEDULA, invoice_id)
 
             if error_msg:
                 for error in error_msg:
@@ -620,6 +623,8 @@ class DgiiReport(models.Model):
                 "RETENCION_RENTA": RETENCION_RENTA and RETENCION_RENTA or 0,
                 "TIPO_BIENES_SERVICIOS_COMPRADOS": invoice_id.expense_type
             }
+
+            var_dump('************** invoice_id.expense_type: ', invoice_id.expense_type)
 
             no_tax_line = invoice_id.invoice_line_ids.filtered(lambda x: not x.invoice_line_tax_ids)
 
