@@ -87,7 +87,10 @@ class DgiiReport(models.Model):
             rec.ITBIS_FACTURADO_SERVICIOS = 0
 
             for purchase in rec.purchase_report:
-                if purchase.NUMERO_COMPROBANTE_FISCAL[9:-8] == "04":
+
+                TIPO_COMPROBANTE = self.getTipoComprobante(purchase)
+
+                if TIPO_COMPROBANTE == "04":
                     rec.ITBIS_TOTAL_NC += purchase.ITBIS_FACTURADO
                     rec.TOTAL_MONTO_NC += purchase.MONTO_FACTURADO
                     rec.RETENCION_RENTA -= purchase.RETENCION_RENTA
@@ -937,6 +940,16 @@ class DgiiReport(models.Model):
         report = base64.b64encode(file.read())
         report_name = 'DGII_608_{}_{}{}.TXT'.format(company_fiscal_identificacion, str(year), str(month).zfill(2))
         self.write({'cancel_binary': report, 'cancel_filename': report_name})
+
+    def getTipoComprobante(self, purchase):
+
+        if len(purchase.NUMERO_COMPROBANTE_FISCAL) == 19:
+            return purchase.NUMERO_COMPROBANTE_FISCAL[9:-8]
+        else:
+            return purchase.NUMERO_COMPROBANTE_FISCAL[1:3]
+
+
+        
 
 
 class DgiiReportPurchaseLine(models.Model):
