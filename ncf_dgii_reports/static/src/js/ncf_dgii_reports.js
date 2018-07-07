@@ -1,4 +1,4 @@
-odoo.define('ncf_manager.widgets', function (require) {
+odoo.define('ncf_dgii_reports.widgets', function (require) {
     "use strict";
 
     var form_common = require('web.form_common');
@@ -6,7 +6,7 @@ odoo.define('ncf_manager.widgets', function (require) {
 
     var Copyright = form_common.FormWidget.extend(form_common.ReinitializeWidgetMixin, {
         start: function () {
-            this.$el.append("<a href='https://marcos.do/page/opl?' target='_blank'>&#169; Marcos Organizador de Negocios SRL / Odoo Proprietary License v1.0</a>");
+            this.$el.append("<a href='https://github.com/odoo-dominicana' target='_blank'>&#169; Marcos Organizador de Negocios SRL / SoftNet Team SRL / ODOO Dominicana</a>");
         }
     });
 

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 ########################################################################################################################
 #  Copyright (c) 2015 - Marcos Organizador de Negocios SRL. (<https://marcos.do/>)
-#  Write by Eneldo Serrata (eneldo@marcos.do)
+#  Based in DGII Reports of Eneldo Serrata (eneldo@marcos.do)
+#  Copyright (c) 2018 - SoftNet Team SRL. (<https://www.softnet.do/>)
+#  Write by Manuel Gonzalez (manuel@softnet.do)
 #  See LICENSE file for full copyright and licensing details.
 #
 # Odoo Proprietary License v1.0

@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <odoo>
+
+    <template id="assets_backend" name="web_widget_ncf_manager assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <script src="/ncf_dgii_reports/static/src/js/ncf_dgii_reports.js" type="text/javascript"></script>
+        </xpath>
+    </template>
+
     <data>
-
-
         <record id="dgii_report_form" model="ir.ui.view">
             <field name="name">Dgii report form</field>
             <field name="model">dgii.report</field>
