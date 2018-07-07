@@ -1,47 +1,52 @@
 # -*- coding: utf-8 -*-
+# ######################################################################
+# © 2015-2018 Marcos Organizador de Negocios SRL. (https://marcos.do/)
+#             Eneldo Serrata <eneldo@marcos.do>
+# © 2017-2018 iterativo SRL. (https://iterativo.do/)
+#             Gustavo Valverde <gustavo@iterativo.do>
+
+# This file is part of NCF Manager.
+
+# NCF Manager is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# NCF Manager is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with NCF Manager.  If not, see <http://www.gnu.org/licenses/>.
+# ######################################################################
+
 {
-    'name': "ncf_pos",
+    'name': "NCF POS",
 
-    'summary': """
-        Short (1 phrase/line) summary of the module's purpose, used as
-        subtitle on modules listing or apps.openerp.com""",
+    'summary': u"""
+        Incorpora funcionalidades de facturación con NCF al POS
+        """,
 
-    'description': """
-        Long description of module's purpose
-    """,
-
-    'author': "My Company",
-    'website': "http://www.yourcompany.com",
-
-    # Categories can be used to filter modules in modules listing
-    # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
-    # for the full list
-    'category': 'Uncategorized',
-    'version': '0.1',
+    'author': "Marcos Organizador de Negocios SRL, "
+              "iterativo SRL, "
+              "Odoo Dominicana (ODOM) ",
+    'category': 'Localization',
+    'version': '10.0.1.0.0',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'web', 'ncf_manager', 'point_of_sale'],
+    'depends': ['ncf_manager', 'point_of_sale'],
 
     # always loaded
     'data': [
-        # 'security/ir.model.access.csv',
-        'views/pos_view.xml',
-        'views/res_config.xml',
-        'views/pos_sesion_view.xml',
-        'views/pos_config_view.xml',
-        'data/data.xml',
+        'security/ir.model.access.csv',
         'views/templates.xml',
-
-    ],
-    # only loaded in demonstration mode
-    'demo': [
-        'demo/demo.xml',
+        'views/pos_config.xml',
+        'views/pos_view.xml',
+        'data/data.xml',
     ],
     'qweb': [
-        'static/src/xml/pos_orders.xml',
-        'static/src/xml/pos_order_return.xml',
-        'static/src/xml/ncf_pos.xml',
         'static/src/xml/pos.xml',
-    ],
-    'installable': False
+        'static/src/xml/ncf_ticket.xml',
+    ]
 }
