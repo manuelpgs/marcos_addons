@@ -365,6 +365,9 @@ class DgiiReport(models.Model):
         # rnc.check_dgii(term)
         # if vat and not api_marcos.is_identification(vat):
 
+        if invoice.type == 'out_invoice':
+            vat = invoice.company_id.vat
+
         if vat and len(vat) == 9 and not rnc.is_valid(vat):
             error_list.append(u"El RNC no es válido")
 
@@ -373,7 +376,7 @@ class DgiiReport(models.Model):
 
         # if not api_marcos.is_ncf(ncf, invoice_type):
         if not ncf.is_valid(invoice.number) or not ncf.check_dgii(vat, invoice.number):
-            error_list.append(u"El NCF no es válido")
+            error_list.append(u"El NCF no es válido.  RNC: %s y tipo de Factura: %s" % (vat, invoice.type))
 
         # if len(origin_invoice_ids) > 1 and invoice_type in ("out_refund", "in_refund"):
         #     error_list.append(u"NC/ND Afectando varias facturas")
@@ -387,8 +390,8 @@ class DgiiReport(models.Model):
         if not invoice.number:
             error_list.append(u"Factura validada sin número asignado")
 
-        if not invoice.expense_type:
-            error_list.append(u"La factura %s no tiene especificado el tipo de costos y gastos requerído por el DGII." % (invoice.number))
+        if invoice.type == 'in_invoice' and not invoice.expense_type:
+            error_list.append(u"La factura %s no tiene especificado el tipo de costos y gastos requerído por el DGII." % invoice.number)
 
         return error_list
 
