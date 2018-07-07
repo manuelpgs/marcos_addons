@@ -21,10 +21,6 @@
 # along with NCF Manager.  If not, see <http://www.gnu.org/licenses/>.
 # ######################################################################
 
-from . import shop
-from . import account
-from . import account_move
-from . import res_currency
-from . import account_invoice
-from . import res
-from . import ir_sequence
+from . import account_invoice_cancel
+from . import account_invoice_refund
+from . import update_internal_sequence_wizard
