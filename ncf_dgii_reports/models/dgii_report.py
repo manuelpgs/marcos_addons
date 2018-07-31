@@ -1007,13 +1007,13 @@ class DgiiReportPurchaseLine(models.Model):
     dgii_report_id = fields.Many2one("dgii.report")
     LINE = fields.Integer("Linea")
     RNC_CEDULA = fields.Char(u"RNC", size=11)
-    TIPO_IDENTIFICACION = fields.Char("Tipo ID", size=1)
+    TIPO_IDENTIFICACION = fields.Char("Tipo Identificación", size=1)
     NUMERO_COMPROBANTE_FISCAL = fields.Char("NCF", size=19)
-    NUMERO_COMPROBANTE_MODIFICADO = fields.Char("Afecta", size=19)
+    NUMERO_COMPROBANTE_MODIFICADO = fields.Char("NCF Modificado", size=19)
     FECHA_COMPROBANTE = fields.Date("Fecha")
     FECHA_PAGO = fields.Date("Pagado")
 
-    TIPO_BIENES_SERVICIOS_COMPRADOS = fields.Char("Tipo", size=2)
+    TIPO_BIENES_SERVICIOS_COMPRADOS = fields.Char("Tipo Bienes/Servicios", size=2)
 
     ITBIS_FACTURADO_TOTAL = fields.Float("ITBIS Facturado (Total)")
     ITBIS_FACTURADO_BIENES = fields.Float("ITBIS Facturado (Bienes)")
@@ -1025,7 +1025,7 @@ class DgiiReportPurchaseLine(models.Model):
     invoice_id = fields.Many2one("account.invoice", "NCF")
     number = fields.Char(related="invoice_id.number", string=" NCF") #todo validate to remove
     inv_partner = fields.Many2one("res.partner", related="invoice_id.partner_id", string="Relacionado") #todo validate to remove
-    affected_nvoice_id = fields.Many2one("account.invoice", "Afecta")
+    affected_nvoice_id = fields.Many2one("account.invoice", "NCF Modificado")
     nc = fields.Boolean()
 
 
@@ -1035,10 +1035,10 @@ class DgiiReportSaleLine(models.Model):
     dgii_report_id = fields.Many2one("dgii.report")
     LINE = fields.Integer("Linea")
     RNC_CEDULA = fields.Char(u"RNC", size=11)
-    TIPO_IDENTIFICACION = fields.Char("Tipo ID", size=1)
+    TIPO_IDENTIFICACION = fields.Char("Tipo Identificación", size=1)
     NUMERO_COMPROBANTE_FISCAL = fields.Char("NCF", size=19)
-    NUMERO_COMPROBANTE_MODIFICADO = fields.Char("Afecta", size=19)
-    FECHA_COMPROBANTE = fields.Date("Fecha")
+    NUMERO_COMPROBANTE_MODIFICADO = fields.Char("NCF Modificado", size=19)
+    FECHA_COMPROBANTE = fields.Date("Fecha NCF")
     ITBIS_FACTURADO = fields.Float("ITBIS Facturado")
     MONTO_FACTURADO = fields.Float("Monto Facturado")
     MONTO_FACTURADO_EXCENTO = fields.Float("Monto Facturado Exento")
@@ -1049,8 +1049,8 @@ class DgiiReportSaleLine(models.Model):
                                   track_visibility='always') #todo validate to remove
 
     number = fields.Char(related="invoice_id.number", string=" NCF") #todo validate to remove
-    inv_partner = fields.Many2one("res.partner", related="invoice_id.partner_id", string="Relacionado") #todo validate to remove
-    affected_nvoice_id = fields.Many2one("account.invoice", "Afecta")
+    inv_partner = fields.Many2one("res.partner", related="invoice_id.partner_id", string="Relacionado") #TODO validate to remove
+    affected_nvoice_id = fields.Many2one("account.invoice", "NCF Modificado")
     nc = fields.Boolean()
 
 
