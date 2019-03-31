@@ -31,9 +31,9 @@ msgid ""
 "                                &amp;nbsp;|&amp;nbsp;\n"
 "                            </span>"
 msgstr ""
-"<span class=\"hidden-xs\">\n"
-"                                &amp;nbsp;|&amp;nbsp;\n"
-"                            </span>"
+"<span class=\"hidden-xs\">1\n"
+"                                &amp;2nbsp;|&amp;3nbsp;\n"
+"                            </span>4"
 
 #. module: web_responsive
 #: model:ir.ui.view,arch_db:web_responsive.webclient_bootstrap
