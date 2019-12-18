@@ -189,12 +189,11 @@ class AccountInvoice(models.Model):
                 "El comprobante *{}* no tiene la estructura correcta "
                 "valide si lo ha digitado correctamente".format(number)))
 
-        if number[-10:-8] not in (
-                '01', '03', '04', '11', '12', '13', '14', '15'):
+        if number[-10:-8] == '02':
             raise ValidationError(_(
                 "NCF *{}* NO corresponde con el tipo de documento\n\n"
-                "Verifique lo ha digitado correctamente y que no sea un "
-                "Comprobante Consumidor Final (02)".format(number)))
+                "No puede registrar Comprobantes Consumidor Final "
+                "(02) ".format(number)))
 
         if self.id:
             ncf_in_draft = self.search_count(
