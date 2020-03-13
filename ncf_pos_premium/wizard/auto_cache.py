@@ -42,7 +42,7 @@ import os
 import time
 import json
 import xlsxwriter
-import xlrd
+# import xlrd
 import itertools
 import glob
 import shutil
