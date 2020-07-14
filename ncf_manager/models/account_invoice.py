@@ -76,7 +76,7 @@ class AccountInvoiceLine(models.Model):
     _inherit = 'account.invoice.line'
 
     income_type = fields.Selection(INCOME_TYPE, related='invoice_id.income_type', default='01')
-    expense_type = fields.Selection(EXPENSE_TYPE, related='invoice_id.expense_type')
+    expense_type = fields.Selection(EXPENSE_TYPE, related='invoice_id.expense_type', default='02')
 
 
 class AccountInvoice(models.Model):
