@@ -218,6 +218,7 @@ class AccountInvoice(models.Model):
         ncf_exist = self.search_count(
             [('partner_id', '=', self.partner_id.id),
              ('number', '=', number),
+             ('type', 'in', ('in_invoice', 'in_refund')),
              ('state', 'in', ('open', 'paid'))])
         if ncf_exist:
             raise UserError(_(
