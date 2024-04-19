@@ -436,10 +436,10 @@ class DgiiReport(models.Model):
             if not error_list.get(invoice_id.id, False):
                 error_list.update(
                     {invoice_id.id: [
-                        (invoice_id.type, invoice_id.number, error_msg)]})
+                        (invoice_id.type, invoice_id.number, error_msg + ', id: ' + str(invoice_id.id))]})
             else:
                 error_list[invoice_id.id].append(
-                    (invoice_id.type, invoice_id.number, error_msg))
+                    (invoice_id.type, invoice_id.number, error_msg + ', id: ' + str(invoice_id.id)))
         return error_list
 
 
