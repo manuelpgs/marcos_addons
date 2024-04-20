@@ -47,7 +47,7 @@ import itertools
 import glob
 import shutil
 from odoo.addons.queue_job.job import job
-import redis
+# import redis
 
 
 _logger = logging.getLogger(__name__)
