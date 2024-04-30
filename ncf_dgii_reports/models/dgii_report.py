@@ -1258,6 +1258,7 @@ class DgiiReport(models.Model):
 
             untaxed_lines = invoice_id.invoice_line_ids.filtered(lambda x: x.invoice_line_tax_ids[0].id in untax_ids)
 
+            ''' Starting logic for untaxed stuff in 607 report  '''
             untaxed_move_lines = []
             total_amount_in_account_movile_line_for_untaxed_invoice_with_many_lines = 0
             for untaxed_line in untaxed_lines:
@@ -1295,6 +1296,8 @@ class DgiiReport(models.Model):
 
                 commun_data["MONTO_FACTURADO_EXCENTO"] = self.env.user.company_id.currency_id.round(
                     sum(abs(rec.debit - rec.credit) for rec in untaxed_move_lines))
+
+            ''' Ending logic for untaxed stuff in 607 report  '''
 
             taxed_lines = invoice_id.invoice_line_ids.filtered(lambda x: x.invoice_line_tax_ids[0].id not in untax_ids)
 
@@ -1335,6 +1338,9 @@ class DgiiReport(models.Model):
                     # if tax.tax_id.type_tax_use == "purchase" and tax.tax_id.account_id.code == '11080102': # 11080102 = ITBIS Pagado en Servicios Locales (DEPRECATED)
                     if tax.tax_id.type_tax_use == "purchase" and tax.tax_id.purchase_tax_type == "itbis_servicios":
                         commun_data["ITBIS_FACTURADO_SERVICIOS"] += tax_amount # used to 606 report
+
+                    if tax.tax_id.type_tax_use == "purchase" and tax.tax_id.purchase_tax_type == "itbis_sujeto_proporcionalidad":
+                        commun_data["ITBIS_SUJETO_PROPORCIONALIDAD"] += tax_amount # used to 606 report
                 else:
                     tax_amount = 0
 
@@ -1450,8 +1456,13 @@ class DgiiReport(models.Model):
                 sale_line += 1
             elif invoice_id.type in ("in_invoice", "in_refund") and commun_data["MONTO_FACTURADO"]:
 
-                commun_data["ITBIS_FACTURADO_TOTAL"] = commun_data["ITBIS_FACTURADO_BIENES"] + commun_data["ITBIS_FACTURADO_SERVICIOS"]
-                commun_data["ITBIS_POR_ADELANTAR"] = commun_data["ITBIS_FACTURADO_TOTAL"] #TODO need to be calculated for some kind of companies that have "ITBIS LLEVADO AL COSTO"
+                commun_data["ITBIS_FACTURADO_TOTAL"] = commun_data["ITBIS_FACTURADO_BIENES"] + commun_data["ITBIS_FACTURADO_SERVICIOS"] + commun_data["ITBIS_SUJETO_PROPORCIONALIDAD"]
+                '''
+                    - #TODO need to be calculated for some kind of companies that have "ITBIS LLEVADO AL COSTO"
+                    - In ITBIS_POR_ADELANTAR we are not reducing ITBIS_SUJETO_PROPORCIONALIDAD because in the 606 
+                        excel tool from the DGII, they wanted column 15 (ITBIS por Adelantar) filled with the same amount of column 13.
+                '''
+                commun_data["ITBIS_POR_ADELANTAR"] = commun_data["ITBIS_FACTURADO_TOTAL"] 
 
                 purchase_report.append((self.id,
                                         purchase_line,
@@ -1837,6 +1848,7 @@ class DgiiReport(models.Model):
     ITBIS_TOTAL = fields.Float(u"ITBIS Compras", compute=_purchase_report_totals)
     ITBIS_FACTURADO_SERVICIOS = fields.Float(u"ITBIS Facturado Servicios", compute=_purchase_report_totals)
     ITBIS_FACTURADO_BIENES = fields.Float(u"ITBIS Facturado Bienes", compute=_purchase_report_totals)
+    ITBIS_SUJETO_PROPORCIONALIDAD = fields.Float(u"ITBIS Facturado Servicios", compute=_purchase_report_totals)
 
     TOTAL_MONTO_NC = fields.Float(u"Notas de crédito", compute=_purchase_report_totals)
     ITBIS_TOTAL_NC = fields.Float(u"ITBIS Notas de crédito", compute=_purchase_report_totals)
@@ -2169,6 +2181,7 @@ class AccountTax(models.Model):
     purchase_tax_type = fields.Selection(
         [('itbis', 'ITBIS Pagado (Bienes)'),
          ('itbis_servicios', 'ITBIS Pagado (Servicios)'),
+         ('itbis_sujeto_proporcionalidad', 'ITBIS Sujeto a Proporcionalidad'),
          ('ritbis', 'ITBIS Retenido'),
          ('isr', 'ISR Retenido'),
          ('rext', 'Remesas al Exterior (Ley 253-12)'),
