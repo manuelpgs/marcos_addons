@@ -340,6 +340,7 @@ class DgiiReport(models.Model):
                 + reporte.ANEXO_A_CASILLA_22_INGRESOS_EXTRAORDINARIOS + reporte.ANEXO_A_CASILLA_23_INGRESOS_X_ARRENDAMIENTOS \
                 + reporte.ANEXO_A_CASILLA_24_IXVAD + reporte.ANEXO_A_CASILLA_25_OTROS_INGRESOS
             reporte.ANEXO_A_CASILLA_33_TOTAL_PAGOS_COMPUTABLES_RETENCIONES = reporte.ANEXO_A_CASILLA_29_PCXOR_NORMA0205
+            
 
 
     @api.multi
@@ -366,9 +367,11 @@ class DgiiReport(models.Model):
         '''
 
         self.IT1_CASILLA_1 = self.ANEXO_A_CASILLA_11_TOTAL_OPERACIONES
-        self.IT1_CASILLA_10 = self.ANEXO_A_CASILLA_11_TOTAL_OPERACIONES
-        self.IT1_CASILLA_11 = self.ANEXO_A_CASILLA_11_TOTAL_OPERACIONES
-        self.IT1_CASILLA_16 = (self.ANEXO_A_CASILLA_11_TOTAL_OPERACIONES * 18) / 100
+        self.IT1_CASILLA_4 = self.MONTO_FACTURADO_EXCENTO
+        self.IT1_CASILLA_9 = self.MONTO_FACTURADO_EXCENTO
+        self.IT1_CASILLA_10 = self.ANEXO_A_CASILLA_11_TOTAL_OPERACIONES - self.IT1_CASILLA_9
+        self.IT1_CASILLA_11 = self.IT1_CASILLA_10
+        self.IT1_CASILLA_16 = (self.IT1_CASILLA_11 * 18) / 100
         self.IT1_CASILLA_21 = self.IT1_CASILLA_16
         self.IT1_CASILLA_22 = self.ANEXO_A_CASILLA_56_COMPRAS_LOCALES_TOTAL_ITBIS_DEDUCIBLE # New IT1 way
         self.IT1_CASILLA_23 = self.ANEXO_A_CASILLA_56_SERVICIOS_TOTAL_ITBIS_DEDUCIBLE # New IT1 way
@@ -1976,6 +1979,8 @@ class DgiiReport(models.Model):
 
     # IT1 (fields)
     IT1_CASILLA_1 = fields.Float(compute=_it1_report)
+    IT1_CASILLA_4 = fields.Float(compute=_it1_report)
+    IT1_CASILLA_9 = fields.Float(compute=_it1_report)
     IT1_CASILLA_10 = fields.Float(compute=_it1_report)
     IT1_CASILLA_11 = fields.Float(compute=_it1_report)
     IT1_CASILLA_16 = fields.Float(compute=_it1_report)
